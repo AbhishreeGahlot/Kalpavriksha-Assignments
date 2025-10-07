@@ -7,18 +7,19 @@
 #include<string.h>
 
 #define MAX 100
-char infix[100];
-char eqn[100];
-char postfix[100];
-char stack[MAX];
+char infix[MAX];
+char eqn[MAX];
+char postfix[MAX];
+// char stack[MAX];
+
 bool valid_token(char infix[] , char eqn[]);
 bool error_check(char eqn[]);
 int precedence(char op);
 void infix_to_postfix(char eqn[] , char postfix[]);
 int evaluate_postfix(char eqn[]);
-void push(int x);
-int pop();
-int top=-1;
+// void push(int x);
+// int pop();
+// int top=-1;
 
 int main()
 {
@@ -31,20 +32,23 @@ int main()
         infix[len-1] = '\0';}
 
     printf("\n The mathematical expression , you entered is: %s", infix);
-    if(!valid_token(infix,eqn))
+
+    if(!valid_token(infix,eqn))  // Step 1: Tokenize and validate
     {
         printf("\n invALID EXPRESSION ");
         return 1;
     };
-    if(!error_check(eqn))
+
+    if(!error_check(eqn))   // Step 2: error checking
     {
         printf("\n Expression failed error validation");
     }
-    infix_to_postfix(eqn , postfix);
+
+    infix_to_postfix(eqn , postfix);  // Step 3: Convert to postfix
     printf("\n Postfix Expression is :  %s",postfix);
 
     
-    int result = evaluate_postfix(postfix);
+    int result = evaluate_postfix(postfix);  // Step 4: Evaluate postfix
     printf("\nResult = %d\n", result);
 
     return 0;
@@ -96,22 +100,23 @@ return true;
 // function 2 : to handle all the error handling edge cases 
 bool error_check(char eqn[])
 {
-    bool nextNumber = true; // initially eqn starts with operands , flag
+    // bool nextNumber = true; // initially eqn starts with operands , flag
     int i = 0;
-    int lastChar = -1 ; // 0 : number , 1 : operands 
+    int lastType = -1 ; // 0 : number , 1 : operands 
+
     int length = strlen(eqn);
 
-    for (int k = 0; eqn[k] != '\0'; k++) {
-        if (isdigit(eqn[k])) {
-            nextNumber = true;
-            break;
-        }
-    }
+    // for (int k = 0; eqn[k] != '\0'; k++) {
+    //     if (isdigit(eqn[k])) {
+    //         nextNumber = true;
+    //         break;
+    //     }
+    // }
 
-    if (!nextNumber) {
-        printf("Expression is empty or contains no numbers\n");
-        return false;
-    }
+    // if (!nextNumber) {
+    //     printf("Expression is empty or contains no numbers\n");
+    //     return false;
+    // }
 
     while( eqn[i] != '\0')
     {
@@ -121,24 +126,23 @@ bool error_check(char eqn[])
             continue;
         }
         if (isdigit(eqn[i])) { 
-            if (lastChar == 0) { 
+            if (lastType == 0) { 
                 printf("\n Error: two consecutive numbers in a row " );
                 return false;
             }
             while (isdigit(eqn[i]))
             { i++;
             } 
-            lastChar = 0; 
+            lastType = 0; 
         }
         else if( eqn[i]=='+' || eqn[i]=='-' || eqn[i]=='*' || eqn[i]=='/' )
         {
-            if(lastChar == 1)
+            if(lastType == 1)
             {
-                printf(" \nError ! , two operators in a consecutive row ");
+                printf(" \nError ! , two consecutive operators.\n ");
                 return false; // error
             }   
-            nextNumber = true;
-            lastChar = 1;
+            lastType = 1;
             i++;
         }
         else {
@@ -150,7 +154,7 @@ bool error_check(char eqn[])
     int lastIndex = strlen(eqn) - 1;
     while (lastIndex >= 0 && eqn[lastIndex] == ' ') lastIndex--;
     if (eqn[lastIndex] == '+' || eqn[lastIndex] == '-' || eqn[lastIndex] == '*' || eqn[lastIndex] == '/') {
-        printf("\n Invalid end of the equation");
+        printf("\n Invalid end of the equation , expression ends with an operator");
         return false;
     }
 return true;
@@ -168,6 +172,7 @@ int precedence(char op)
 //function 4 : infix to postfix 
 void infix_to_postfix( char eqn[] , char postfix[] )
 {
+    char stack[MAX];
     int top = -1;
     int i=0 , j=0 ;
 
@@ -188,7 +193,7 @@ void infix_to_postfix( char eqn[] , char postfix[] )
             postfix[j++] =' ';
         }
 
-        else if( eqn[i]=='+' || eqn[i]=='-' || eqn[i]=='*' || eqn[i]=='/' )
+        else if( eqn[i]=='+' || eqn[i]=='-' || eqn[i]=='*' || eqn[i]=='/' ) // if operator then manage stack
         {
             while( top>=0 && precedence(stack[top]) >= precedence(eqn[i]))
             {
@@ -200,7 +205,7 @@ void infix_to_postfix( char eqn[] , char postfix[] )
         }
         else
         {
-            printf("Invalid character in expression: %c\n", eqn[i]);
+            printf("Invalid character in in infix_to_postfix. : %c\n", eqn[i]);
             exit(1);
         }
     }
@@ -216,7 +221,8 @@ void infix_to_postfix( char eqn[] , char postfix[] )
 
 //function 5 : evaluate postfix
 int evaluate_postfix(char eqn[]) 
-{
+{       int stack[MAX];
+        int top = -1;
         int i = 0;
 
     while (eqn[i] != '\0') {
@@ -224,17 +230,22 @@ int evaluate_postfix(char eqn[])
             i++;
             continue;
         }
-        if (isdigit(eqn[i])) {
+        if (isdigit(eqn[i])) {  // If number → push to stack
             int num = 0;
             while (isdigit(eqn[i])) {
                 num = num * 10 + (eqn[i] - '0');
                 i++;
             }
-            push(num);
+            // push(num);
+            stack[++top] = num;
         }
-        else if (eqn[i] == '+' || eqn[i] == '-' || eqn[i] == '*' || eqn[i] == '/') {
-            int val2 = pop();
-            int val1 = pop();
+        else if (eqn[i] == '+' || eqn[i] == '-' || eqn[i] == '*' || eqn[i] == '/') {  // If operator → pop two and compute
+            if (top < 1) {
+                printf("\nError: Invalid postfix expression.\n");
+                exit(1);
+            }
+            int val2 = stack[top--];
+            int val1 = stack[top--];
             int result = 0;
 
             switch (eqn[i]) {
@@ -248,25 +259,35 @@ int evaluate_postfix(char eqn[])
                     result = val1 * val2; 
                     break;
                 case '/': 
-                    result = val1 / val2; 
-                    break; 
-            }
-            push(result);
-            i++;
+                    if (val2 == 0) {
+                        printf("\nError: Division by zero.\n");
+                        exit(1);
+                    }
+                    result = val1 / val2;
+                    break;
+                    }
+                stack[++top] = result;
+                i++;
         }
         else {
-            i++; // skip unknown characters
+            printf("Error: Invalid character '%c' in postfix.\n", eqn[i]);
+            exit(1);
         }
     }
-    return pop();
+
+     if (top != 0) {
+        printf("\nError: Invalid postfix evaluation.\n");
+        exit(1);
+    } 
+    return stack[top];
 }
 
-//function 6: 
-void push(int x) {
-    stack[++top] = x;
-}
+// //function 6: 
+// void push(int x) {
+//     stack[++top] = x;
+// }
 
-//function 7:
-int pop() {
-    return stack[top--];
-}
+// //function 7:
+// int pop() {
+//     return stack[top--];
+// }
