@@ -1,7 +1,7 @@
 /**
  * Assignment: Student Performance Analyzer
  * File Name: student_performance_analyzer.c
- * Author: Abhishree Gahlor
+ * Author: Abhishree Gahlot
  * Branch: assignment1/student-performance-analyzer
  *
  * Description:
@@ -27,12 +27,6 @@
 #include <ctype.h>
 
 
-/**
- * @struct StudentInfo
- * @brief Represents a student's basic information.
- * @details This  structure contains the information of a 
- *          Student and data required to generate the performance report.
- */
 typedef struct StudentInfo
 {
     int rollNo; 
@@ -62,8 +56,13 @@ int main ()
     int numberOfStudents;
     printf("Enter number of students: ");
     scanf("%d", &numberOfStudents);
-    getchar(); // consume the leftover '\n'
-    
+    getchar();
+
+    if (numberOfStudents > 100)
+    {
+        printf("Number of students should be less than or equal to 100.\n");
+        return 1; //exit
+    }
     StudentInfo *students = malloc ( numberOfStudents * sizeof( StudentInfo ));
     if (students == NULL) {
         printf("Memory allocation failed!\n");
@@ -74,33 +73,27 @@ int main ()
 
     displayStudentInfo( students , numberOfStudents);
 
-    free(students); // freeing the memory at the end of program
+    free(students); 
     return 0;
 }
 
 
-/**
- * @function getStudentInfo()
- * @brief This function represents taking input of all the information about the students
- * @remark this function takes input data from user while checking whether the data 
- *          given by user is valid or not
- */
 void getStudentInfo(StudentInfo *student, int numberOfStudents)
 {
-    char buffer[100];
+    char studentInput[100];
     printf(" \nEnter the details of the Students");
     printf(" \nEnter in format Roll_Number1 Name Marks1 Marks2 Marks3:\n");
 
-    for ( int i = 0; i < numberOfStudents; i++ )
+    for ( int studentCount = 0; studentCount < numberOfStudents; studentCount++ )
     {
         while(1)
         {
-            printf("\n Student %d : ", i + 1);
-            fgets(buffer , sizeof( buffer ) , stdin );
-            buffer[strcspn(buffer, "\n")] = '\0';
+            printf("\n Student %d : ", studentCount + 1);
+            fgets(studentInput , sizeof( studentInput ) , stdin );
+            studentInput[strcspn(studentInput, "\n")] = '\0';
 
             //validation for roll number
-            if(isEmptyOrSpaces(buffer))
+            if(isEmptyOrSpaces(studentInput))
             {
                 printf("\nStudent Details cannot be empty! Please re-enter.");
                 continue; //reprompt
@@ -111,7 +104,7 @@ void getStudentInfo(StudentInfo *student, int numberOfStudents)
             float marks1, marks2, marks3;
             char extra[10];
 
-            int scanned = sscanf(buffer , "%d %s %f %f %f %s" ,
+            int scanned = sscanf(studentInput , "%d %s %f %f %f %s" ,
                                  &rollNo , studentName , &marks1 , &marks2 , &marks3 , extra);
 
             // check if all 5 values were successfully read
@@ -121,31 +114,31 @@ void getStudentInfo(StudentInfo *student, int numberOfStudents)
             }
 
             // Validate roll number 
-            if (!isRollNumberValid(student, i, rollNo)) {
+            if (!isRollNumberValid(student, studentCount, rollNo)) {
                 printf("Roll number %d already exists or it is not valid value! Please re-enter.\n"
                     , rollNo);
                 continue;
             }
             
             //  validate name of student 
-            if ( !isStudentNameValid(student , i , studentName))
+            if ( !isStudentNameValid(student , studentCount , studentName))
             {
                 printf(" Student Name is not valid ! Please re-enter . \n");
                 continue;
             }
 
             // validate for students marks 
-            if( !isMarksValid(student , i , marks1 , marks2 , marks3 ))
+            if( !isMarksValid(student , studentCount , marks1 , marks2 , marks3 ))
             {
                 printf(" Student Marks should be between 0 - 100  ! Please re-enter . \n");
                 continue;
             }
             //valid input assign values
-            student[i].rollNo = rollNo;
-            strcpy(student[i].studentName, studentName);
-            student[i].studentMarks[0]= marks1;
-            student[i].studentMarks[1]= marks2;
-            student[i].studentMarks[2]= marks3;
+            student[studentCount].rollNo = rollNo;
+            strcpy(student[studentCount].studentName, studentName);
+            student[studentCount].studentMarks[0]= marks1;
+            student[studentCount].studentMarks[1]= marks2;
+            student[studentCount].studentMarks[2]= marks3;
 
             break;
         }
@@ -153,46 +146,38 @@ void getStudentInfo(StudentInfo *student, int numberOfStudents)
     }
 }   
 
-/**
- * @function displayStudentInfo()
- * @brief Displays all student details
- */
+
 void displayStudentInfo(const StudentInfo *student, int numberOfStudents)
 {
     printf("\n===== Students Performance Report =====\n");
     
 
-    for (int i = 0; i < numberOfStudents; i++)
+    for (int studentCount = 0; studentCount < numberOfStudents; studentCount++)
     {
-        printf("\nRoll : %d",student[i].rollNo);
-        printf("\nName : %s",student[i].studentName);
-        float totalMarks = calculateTotalMarks(&student[i]);
+        printf("\nRoll : %d",student[studentCount].rollNo);
+        printf("\nName : %s",student[studentCount].studentName);
+        float totalMarks = calculateTotalMarks(&student[studentCount]);
         printf("\nTotal : %.2f",totalMarks);
-        float averageMarks = calculateAverageMarks(&student[i]);
+        float averageMarks = calculateAverageMarks(&student[studentCount]);
         printf("\nAverage : %.2f",averageMarks);
-        char grade = calculateStudentGrade(&student[i]);
+        char grade = calculateStudentGrade(&student[studentCount]);
         printf("\nGrade : %c", grade);
-        calculatePerformance(&student[i]);
+        calculatePerformance(&student[studentCount]);
     }
     printf("\nRoll Numbers : ");
     printAllStudentsRollWrapper(student, numberOfStudents);
 }
 
 
-/**
- * @function isRollNumberValid()
- * @brief This function checks whether the roll number is valid or not 
- * @return true if roll number is valid else false
- */
 bool isRollNumberValid(const StudentInfo *student , int numberOfStudents , int checkRollNo)
 {
     if(checkRollNo <= 0 )
     {
         return false;
     }
-    for ( int i=0 ; i< numberOfStudents ; i++)
+    for ( int studentCount =0 ; studentCount < numberOfStudents ; studentCount++)
     {
-        if(checkRollNo == student[i].rollNo)
+        if(checkRollNo == student[studentCount].rollNo)
         {
             return false;
         }
@@ -200,14 +185,12 @@ bool isRollNumberValid(const StudentInfo *student , int numberOfStudents , int c
     return true;
 }
 
-/**
- * @brief : Helper function to check if a string is empty or just spaces
- */
-bool isEmptyOrSpaces(char *str)
+
+bool isEmptyOrSpaces(char *inputString)
 {
-    for( int i = 0 ; str[i] != '\0' ; i++ )
+    for( int charIndex = 0 ; inputString[charIndex] != '\0' ; charIndex++ )
     {
-        if( !isspace(str[i]))
+        if( !isspace(inputString[charIndex]))
         {
             return false ; // found non space characters
         }
@@ -215,16 +198,13 @@ bool isEmptyOrSpaces(char *str)
     return true; // only spaces or empty
 }
 
-/**
- * @brief : This function checks whether the name typed is valid or not 
- * @return true if student's name is valid , else returns false
- */
+
 bool isStudentNameValid(const StudentInfo *student , int numberOfStudents ,  char studentName[50] )
 {
     int size = strlen(studentName);
-    for ( int i=0 ; i<size ; i++ )
+    for ( int studentIndex =0 ; studentIndex <size ; studentIndex++ )
     {
-        if ( !isalpha(studentName[i]))
+        if ( !isalpha(studentName[studentIndex]))
         {
             return false;
         }
@@ -233,9 +213,7 @@ bool isStudentNameValid(const StudentInfo *student , int numberOfStudents ,  cha
     return true;
 }
 
-/**
- * @brief : This function checks whether the student's marks are valid or not
- */
+
 bool isMarksValid(const StudentInfo *student , int numberOfStudents ,  float marks_1 , float marks_2 , float marks_3)
 {
     if (marks_1 >= 0 && marks_1 <= 100 &&
@@ -251,25 +229,18 @@ bool isMarksValid(const StudentInfo *student , int numberOfStudents ,  float mar
 }
 
 
-/**
- * @brief This function returns the total marks gained by a student 
- */
+
 float calculateTotalMarks(const StudentInfo *student)
 {
     return student->studentMarks[0] + student->studentMarks[1] + student->studentMarks[2];
 }
 
-/**
- * @brief This function returns the average score by a student 
- */
 float calculateAverageMarks(const StudentInfo *student)
 {
     return calculateTotalMarks(student) / 3.0f;
 }
 
-/**
- * @brief : This function assigns the grade for the score of student
- */
+
 char calculateStudentGrade(const StudentInfo *student)
 {
     float averageMarks = calculateAverageMarks(student);
@@ -296,9 +267,7 @@ char calculateStudentGrade(const StudentInfo *student)
     }
 }
 
-/**
- * @brief: prints THE Stars according to students performance on average marks
- */
+
 void calculatePerformance(const StudentInfo *student)
 {
     int stars=0;
@@ -324,7 +293,7 @@ void calculatePerformance(const StudentInfo *student)
 
     if (stars > 0) {
         printf("\nPerformance: ");
-        for (int j = 0; j < stars; j++) 
+        for (int starIndex = 0; starIndex < stars; starIndex++) 
         {
             printf("*");
         }
@@ -333,10 +302,7 @@ void calculatePerformance(const StudentInfo *student)
 }
 
 
-/**
- * @brief prints the roll number of all students
- * @description  : recursive helper function
- */
+
 void printAllStudentsRoll(const StudentInfo *student , int numberOfStudents, int currentIndex )
 {
    // base case
@@ -350,9 +316,7 @@ void printAllStudentsRoll(const StudentInfo *student , int numberOfStudents, int
     printAllStudentsRoll( student , numberOfStudents , currentIndex+1 );
 }
 
-/**
- * @brief : Wrapper function for the recursive function 
- */
+
 void printAllStudentsRollWrapper(const StudentInfo *student, int numberOfStudents)
 {
     printAllStudentsRoll(student, numberOfStudents, 0);
