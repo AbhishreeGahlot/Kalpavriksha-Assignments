@@ -26,6 +26,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#define MAX_STUDENTS 100
 
 typedef struct StudentInfo
 {
@@ -49,31 +50,44 @@ void calculatePerformance(const StudentInfo *student);
 void printAllStudentsRoll(const StudentInfo *student , int numberOfStudents, int currentIndex  );
 void printAllStudentsRollWrapper(const StudentInfo *student, int numberOfStudents);
 
-
 int main ()
 {
     printf("Welcome to Students Performance Analyser\n");
+
     int numberOfStudents;
-    printf("Enter number of students: ");
-    scanf("%d", &numberOfStudents);
-    getchar();
 
-    if (numberOfStudents > 100)
-    {
-        printf("Number of students should be less than or equal to 100.\n");
-        return 1; //exit
-    }
-    StudentInfo *students = malloc ( numberOfStudents * sizeof( StudentInfo ));
-    if (students == NULL) {
-        printf("Memory allocation failed!\n");
-        return 1;
+    char numberOfStudentsInput[50];
+    const int maxStudents = 100;
+    while (1) {
+        printf("Enter number of students (1-100): ");
+        if (!fgets(numberOfStudentsInput, sizeof(numberOfStudentsInput), stdin)) 
+        {
+            continue;
+        }
+
+        numberOfStudentsInput[strcspn(numberOfStudentsInput, "\n")] = '\0';
+
+        char *conversionEndPtr;
+        long studentCountInput = strtol(numberOfStudentsInput, &conversionEndPtr, 10);
+        if (*conversionEndPtr != '\0') {
+            printf(" Invalid input! Please enter a whole number.\n");
+            continue;
+        }
+        if (studentCountInput <= 0 || studentCountInput > 100) {
+            printf(" Number of students must be between 1 and 100.\n");
+            continue;
+        }
+
+        numberOfStudents = (int)studentCountInput;
+        break;
     }
 
+
+    StudentInfo students[100];
     getStudentInfo( students , numberOfStudents);
 
     displayStudentInfo( students , numberOfStudents);
 
-    free(students); 
     return 0;
 }
 
