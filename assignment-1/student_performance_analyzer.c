@@ -26,7 +26,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#define MAX_STUDENTS 100
 
 typedef struct StudentInfo
 {
