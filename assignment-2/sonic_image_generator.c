@@ -29,7 +29,7 @@
 
     int main()
     {
-        char matrixInput[5];
+        char matrixInput[10];
         int matrixSize;
         while(1)
         {
@@ -126,16 +126,31 @@
         while (( inputChar = getchar()) != '\n' && inputChar !=EOF);
     }
 
-    bool isNumber (const char *matrixInput)
+    bool isNumber(const char *matrixInput)
     {
-        for( int charIndex=0 ; matrixInput[charIndex] !='\0' ; charIndex++)
+        int i = 0;
+
+        while (matrixInput[i] && isspace((unsigned char)matrixInput[i])) 
         {
-            if(!isdigit((unsigned char) matrixInput[charIndex]))
-            {
-                return false;   
-            }
+            i++;
         }
-        return true;
+        
+        if (!isdigit((unsigned char)matrixInput[i]))
+        {
+            return false;
+        } 
+
+        while (matrixInput[i] && isdigit((unsigned char)matrixInput[i]))
+        {
+            i++;
+        } 
+
+        while (matrixInput[i] && isspace((unsigned char)matrixInput[i])) 
+        {
+            i++;
+        }
+
+        return matrixInput[i] == '\0';
     }
 
     int generateRandomNumber()
@@ -200,6 +215,7 @@
     {
         int previousRow[matrixSize];
         int currentRow[matrixSize];
+        int newRow[matrixSize];
 
         for( int row=0 ; row < matrixSize  ; row++)
         {
@@ -249,9 +265,14 @@
                 }
                 int newValue = totalSum / elementCount;
 
-                *(*(matrix + row) + column) = newValue;
+                *(newRow + column) = newValue;
             }
 
+            for (int col = 0; col < matrixSize; col++)
+            {
+                *(*(matrix + row) + col) = *(newRow + col);
+            }
+            
             for (int col = 0; col < matrixSize; col++) 
             {
                 *(previousRow + col) = *(currentRow + col);
