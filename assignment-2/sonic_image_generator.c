@@ -18,13 +18,13 @@
     bool isNumber(const char *matrixInput);
 
     int generateRandomNumber();
-    void generateImageMatrix(const int matrixSize, int (*p)[matrixSize]);
-    void printMatrix(const int matrixSize, int (*p)[matrixSize]);
-    void rotatedImageMatrix(const int matrixSize, int (*p)[matrixSize]);
+    void generateImageMatrix(const int matrixSize, int (*matrix)[matrixSize]);
+    void printMatrix(const int matrixSize, int (*matrix)[matrixSize]);
+    void rotatedImageMatrix(const int matrixSize, int (*matrix)[matrixSize]);
 
     void swap( int *firstNumber , int *secondNumber );
 
-    void smoothingFilter(const int matrixSize , int (*p)[matrixSize]);
+    void smoothingFilter(const int matrixSize , int (*matrix)[matrixSize]);
 
 
     int main()
@@ -76,23 +76,23 @@
         printf(" Matrix size is %d x %d \n" , matrixSize , matrixSize);
 
         int imageMatrix[matrixSize][matrixSize];
-        int (*p)[matrixSize] = imageMatrix;
+        int (*matrix)[matrixSize] = imageMatrix;
         
         state = (unsigned int)time(NULL);
 
-        generateImageMatrix(matrixSize, p);
+        generateImageMatrix(matrixSize, matrix);
         printf(" Original Randomly Generated Matrix : \n");
-        printMatrix(matrixSize , p);
+        printMatrix(matrixSize , matrix);
         printf("\n");
 
         printf("Matrix after 90 degree Clockwise Rotation : \n");
-        rotatedImageMatrix( matrixSize , p );
-        printMatrix(matrixSize , p);
+        rotatedImageMatrix( matrixSize , matrix );
+        printMatrix(matrixSize , matrix);
         printf("\n");    
 
         printf("Matrix after Applying 3x3 Smoothing Filter : \n");
-        smoothingFilter(matrixSize , p);
-        printMatrix(matrixSize , p);
+        smoothingFilter(matrixSize , matrix);
+        printMatrix(matrixSize , matrix);
         printf("\n");
 
         return 0;
@@ -145,40 +145,40 @@
     }
 
 
-    void generateImageMatrix(int matrixSize, int (*p)[matrixSize]) {
+    void generateImageMatrix(int matrixSize, int (*matrix)[matrixSize]) {
         for (int row = 0; row < matrixSize; row++) {
             for (int column = 0; column  < matrixSize; column++) {
-                *(*(p+row) +column) = generateRandomNumber();
+                *(*(matrix+row) +column) = generateRandomNumber();
             }
         }
     }
 
-    void printMatrix(int matrixSize, int (*p)[matrixSize])
+    void printMatrix(int matrixSize, int (*matrix)[matrixSize])
     {
         for(int row=0 ; row<matrixSize ; row++)
         {
             for(int column=0 ; column<matrixSize ; column++)
             {
-                printf("%5d " , *(*(p+row) +column) );
+                printf("%5d " , *(*(matrix+row) +column) );
             }
             printf("\n");
         }
     }
 
-    void rotatedImageMatrix(int matrixSize, int (*p)[matrixSize])
+    void rotatedImageMatrix(int matrixSize, int (*matrix)[matrixSize])
     {
         for( int row=0 ; row<matrixSize  ; row++)
         {
             for( int column = row + 1 ; column < matrixSize ; column++)
             {
-                swap( (*( p + row ) + column ) , (*( p + column ) + row ) );
+                swap( (*( matrix + row ) + column ) , (*( matrix + column ) + row ) );
             }
         }  
 
         for( int row=0 ; row<matrixSize ; row++)
         {
-            int *startElement =  *(p + row );
-            int *endElement = *( p + row ) + ( matrixSize - 1);
+            int *startElement =  *(matrix + row );
+            int *endElement = *( matrix + row ) + ( matrixSize - 1);
 
             while( startElement < endElement)
             {
@@ -191,12 +191,12 @@
 
     void swap( int *firstNumber , int *secondNumber )
     {
-        int temp = *secondNumber ; 
+        int temporaryValue = *secondNumber ; 
         *secondNumber = *firstNumber ;
-        *firstNumber = temp;
+        *firstNumber = temporaryValue;
     }
 
-    void smoothingFilter(int matrixSize , int (*p)[matrixSize])
+    void smoothingFilter(int matrixSize , int (*matrix)[matrixSize])
     {
         int previousRow[matrixSize];
         int currentRow[matrixSize];
@@ -205,7 +205,7 @@
         {
             for (int col = 0; col < matrixSize; col++) 
             {
-                *(currentRow + col) = *(*(p + row) + col);
+                *(currentRow + col) = *(*(matrix + row) + col);
             }   
 
             for( int column = 0 ; column < matrixSize ; column++)
@@ -241,7 +241,7 @@
                         } 
                         else
                         {
-                            totalSum += *(*(p + newRow) +newColumn); //below 
+                            totalSum += *(*(matrix + newRow) +newColumn); //below 
                         }
 
                         elementCount++;
@@ -249,7 +249,7 @@
                 }
                 int newValue = totalSum / elementCount;
 
-                *(*(p + row) + column) = newValue;
+                *(*(matrix + row) + column) = newValue;
             }
 
             for (int col = 0; col < matrixSize; col++) 
