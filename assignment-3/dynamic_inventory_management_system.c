@@ -17,23 +17,23 @@ void clearInputBuffer(void);
 bool isEmptyorSpaces(const char numOfProduct[]);
 bool isNumber(const char numOfProduct[]);
 bool isSizeValid( const int numberOfProduct);
-
+bool isFloatNumber(const char *product_price);
+void getInputIdToSearch(char *inputID);
 
 void getProductDetails(const int numberOfProduct , ProductDetails *Product); 
 void getValidID( const int numberOfProduct , char *product_id , ProductDetails *Product  , const int size);
 bool isProductIdUnique( const int numberOfProduct , const char *product_id , ProductDetails *Product);
 void getValidProductName( const int numberOfProduct , char *product_name , const int size);
-void getValidProductPrice(const int numberOfProduct , char *product_price , const int size); //<-and  currenlty on this
+void getValidProductPrice(const int numberOfProduct , char *product_price , const int size);
 void getValidProductQuantity(const int numberOfProduct , char *product_quantity , const int size);
 
-// void addNewProduct(void);
+void addNewProduct( int* numberOfProduct , ProductDetails **Product );
 void viewAllProduct(const int numberOfProduct , const ProductDetails *Product);
-void updateProductQuantity(const int numberOfProduct , ProductDetails *Product ); //<- currenlty on this
-// void searchProductById(void);
-// void searchProductByName(void);
-// void searchProductByPriceRange(void);
-// void deleteProduct(void);
-
+void updateProductQuantity(const int numberOfProduct , ProductDetails *Product ); 
+void searchProductById(const int numberOfProduct , const ProductDetails *Product);
+void searchProductByName(const int numberOfProduct , const ProductDetails *Product);
+void searchProductByPriceRange(const int numberOfProduct , const ProductDetails *Product);
+void deleteProduct( int *numberOfProduct , ProductDetails **Product );
 
 int main()
 {
@@ -47,7 +47,6 @@ int main()
         return -1;
     }
 
-    //  function to take input of users 
     getProductDetails(  numberOfProduct , Product);
 
     printf("\n ========= INVENTORY MENU ========= ");
@@ -62,7 +61,7 @@ int main()
         switch(choice)
         {
             case 1 : 
-                    printf("\n add new product function goes here ");
+                    addNewProduct(&numberOfProduct ,&Product);
                     continue;
             case 2 : 
                     viewAllProduct(numberOfProduct , Product);
@@ -71,19 +70,19 @@ int main()
                     updateProductQuantity(numberOfProduct , Product);
                     continue;
             case 4 : 
-                    printf("\n search by product id function goes here ");
+                    searchProductById(numberOfProduct , Product);
                     continue;
             case 5 : 
-                    printf("\n search by product name  function goes here ");
+                    searchProductByName(numberOfProduct , Product);
                     continue;
             case 6 : 
-                    printf("\n search  product by price range function goes here ");
+                    searchProductByPriceRange(numberOfProduct , Product);
                     continue;
             case 7 : 
-                    printf("\n delete product function goes here ");
+                    deleteProduct(&numberOfProduct ,&Product);
                     continue;
             case 8 :
-                    printf("\n exit product function goes here ");
+                    printf("\n Exit Function ");
                     break;
             default :
                     printf("\n Invalid choice");
@@ -95,7 +94,7 @@ int main()
     
     free(Product);
     Product = NULL;
-    printf("\n\n\n checking for dangling ptr %p" , Product);
+    // printf("\n\n\n checking for dangling ptr %p" , Product);
     printf(" \n Memory released successfully . Exiting  Program...");
 
     return 0;
@@ -337,6 +336,49 @@ void getValidProductName( const int numberOfProduct , char *product_name , const
     }
 }
 
+bool isFloatNumber(const char *product_price)
+{
+    int index=0 ;
+    bool hasDecimalPoint = false;   
+
+    while( product_price[index] && isspace((unsigned char) product_price[index]))
+    {
+        index++;
+    }
+
+    if( product_price[index] !='.' && !isdigit((unsigned char) product_price[index]))
+    {
+        return false;
+    }
+
+    while( product_price[index])
+    {
+        if(isdigit((unsigned char) product_price[index]))
+        {
+            index++;
+        }
+        else if (  product_price[index] =='.')
+        {
+            if( hasDecimalPoint)
+            {
+                return false;
+            }
+            hasDecimalPoint = true;
+            index++;
+        }
+        else
+        {
+            break;
+        }  
+    }
+
+    while( product_price[index] && isspace((unsigned char) product_price[index]))
+    {
+        index++;
+    }
+
+    return product_price[index] == '\0'; 
+}
 
 void getValidProductPrice(const int numberOfProduct , char *product_price , const int size)
 {
@@ -352,21 +394,18 @@ void getValidProductPrice(const int numberOfProduct , char *product_price , cons
         if( isEmptyorSpaces (product_price) )
         {
             printf("Input cannot be empty or spaces only!\n");
-            printf("Enter Product Price again : ");
+            printf("Enter  Price again : ");
             fgets( product_price , size , stdin);
             continue;
         }
 
-        //=================================== currenlty working on validation of the floating point vals
-
-
-        // if( !isNumber ( product_price))
-        // {
-        //     printf("Input should be numeric value only!\n");
-        //     printf("Enter Product Price again : ");
-        //     fgets( product_price , size , stdin);
-        //     continue;
-        // }
+        if( !isFloatNumber ( product_price))
+        {
+            printf("Input should be numeric value only!\n");
+            printf("Enter  Price again : ");
+            fgets( product_price , size , stdin);
+            continue;
+        }
 
         float productPrice = -1;
         
@@ -374,7 +413,7 @@ void getValidProductPrice(const int numberOfProduct , char *product_price , cons
         if( parsedItem != 1)
         {
             printf("Please enter a valid price! \n");
-            printf("Enter Product price again : ");
+            printf("Enter  price again : ");
             fgets( product_price ,size , stdin);
             continue;
         }
@@ -382,7 +421,7 @@ void getValidProductPrice(const int numberOfProduct , char *product_price , cons
         if( productPrice <0 || productPrice > 100000)
         {
             printf(" Price should be between 1 and 100000 only! \n");
-            printf("Enter Product Price again : ");
+            printf("Enter  Price again : ");
             fgets( product_price , size , stdin);
             continue;
         }
@@ -445,18 +484,15 @@ void viewAllProduct(const int numberOfProduct , const ProductDetails *Product)
    printf("\n========= PRODUCT LIST ========= ");
    for(int index=0 ; index<numberOfProduct ; index++)
     {
-        printf("\nProduct ID :%s | Name : %s | Price : %s | Quantity : %s " , 
+        printf("\nProduct ID :%2s | Name : %2s | Price : %2s | Quantity : %2s " , 
             Product[index].productID , Product[index].productName , Product[index].productPrice 
             , Product[index].productQuantity 
         );
     } 
 }
 
-void updateProductQuantity(const int numberOfProduct , ProductDetails *Product )
+void getInputIdToSearch(char *inputID)
 {
-    char inputID[10];
-    printf("\nEnter Product ID to update quantity: ");
-    fgets( inputID , sizeof(inputID) , stdin);
     while(1)
     {
         if( strchr( inputID, '\n') == NULL)
@@ -484,20 +520,188 @@ void updateProductQuantity(const int numberOfProduct , ProductDetails *Product )
 
         break;
     }
+}
+void updateProductQuantity(const int numberOfProduct , ProductDetails *Product )
+{
+    char inputID[10];
+    clearInputBuffer();
+    printf("\nEnter Product ID to update quantity: ");
+    fgets( inputID , sizeof(inputID) , stdin);
+    getInputIdToSearch(inputID);
     
+    bool found = false;
+
     for( int index=0 ; index<numberOfProduct ; index++)
     {
         if(strcmp( Product[index].productID , inputID ) ==0 )
         {
+            found = true;
+            printf("\nProduct ID :%s | Name : %s | Price : %s | Quantity : %s " , 
+                Product[index].productID , Product[index].productName , Product[index].productPrice 
+                , Product[index].productQuantity 
+            );
+
+            printf("\nEnter new quantity:");
+            fgets(Product[index].productQuantity, sizeof(Product[index].productQuantity) ,stdin );
+            getValidProductQuantity(numberOfProduct, Product[index].productQuantity , sizeof(Product[index].productQuantity));
+            printf("\nQuantity Updated Succesfully");
+            break;
+        }
+    }
+    if( !found)
+    {
+        printf("\nNo such product id exist ");
+    }
+}
+
+void searchProductById(const int numberOfProduct ,const ProductDetails *Product)
+{
+    char productID[10];
+    printf("\nEnter product ID to search : ");
+    clearInputBuffer();
+    fgets( productID , sizeof(productID) , stdin);
+    getInputIdToSearch(productID);
+
+    bool found=false;
+    for( int index=0 ; index<numberOfProduct ; index++)
+    {
+        if(strcmp( Product[index].productID , productID ) ==0 )
+        {
+            found = true;
             printf("\nProduct ID :%s | Name : %s | Price : %s | Quantity : %s " , 
                 Product[index].productID , Product[index].productName , Product[index].productPrice 
                 , Product[index].productQuantity 
             );
         }
-        else
+    }
+    if( !found)
+    {
+        printf("\nNo such product id exist ");
+    }
+}
+
+void searchProductByName(const int numberOfProduct ,const ProductDetails *Product)
+{
+    char productName[60];
+    printf("\nEnter name to search (partial allowed) : ");
+    clearInputBuffer();
+    fgets( productName , sizeof(productName) , stdin);
+    getValidProductName(numberOfProduct, productName, sizeof(productName));
+
+    bool found=false;
+    for( int index=0 ; index<numberOfProduct ; index++)
+    {
+        if(strstr( Product[index].productName ,productName  ) !=NULL )
         {
-            printf("\nNo such product id exist ");
+            found = true;
+            printf("\nProduct ID :%s | Name : %s | Price : %s | Quantity : %s " , 
+                Product[index].productID , Product[index].productName , Product[index].productPrice 
+                , Product[index].productQuantity 
+            );
+        }
+    }
+    if( !found)
+    {
+        printf("\nNo such product name exist ");
+    }
+}
+
+void searchProductByPriceRange(const int numberOfProduct , const ProductDetails *Product)
+{
+    char maximumPrice[10];
+    char minimumPrice[10];
+    float minimum_price = 0.0f;
+    float maximum_price = 0.0f;
+
+    clearInputBuffer();
+    printf("\nEnter minimum price: ");
+    fgets(minimumPrice , sizeof(minimumPrice) , stdin);
+    getValidProductPrice(numberOfProduct , minimumPrice , sizeof(minimumPrice));
+    printf("\nEnter maximum price: ");
+    fgets(maximumPrice , sizeof(maximumPrice) , stdin);
+    getValidProductPrice(numberOfProduct , maximumPrice , sizeof(maximumPrice));
+
+    minimum_price = atof(minimumPrice);
+    maximum_price = atof(maximumPrice);
+
+    bool found= false;
+    for( int index=0 ; index<numberOfProduct ; index++)
+    {
+        
+        float price = atof(Product[index].productPrice);
+
+        if( price >= minimum_price && price <= maximum_price)
+        {
+            found = true;
+            printf("\nProducts in price range :%s | Name : %s | Price : %s | Quantity : %s " , 
+                Product[index].productID , Product[index].productName , Product[index].productPrice 
+                , Product[index].productQuantity 
+            );
+        }
+    }
+
+    if(!found)
+    {
+        printf("\n No products in this price range");
+    }
+}
+
+void addNewProduct(int* numberOfProduct , ProductDetails **Product )
+{
+    clearInputBuffer();
+    int newProductCount = *numberOfProduct + 1;
+
+    struct ProductDetails *newProduct = realloc( *Product , newProductCount * sizeof(ProductDetails));
+    if( newProduct == NULL)
+    {
+        printf("\n Memory Allocation for new product failed");
+        return ;
+    }
+
+    *Product = newProduct;
+
+    getProductDetails(1 , &(*Product)[newProductCount-1]);
+    *numberOfProduct = newProductCount;
+}
+
+void deleteProduct( int *numberOfProduct , ProductDetails **Product )
+{
+    char productID[10];
+    printf("\nEnter product ID to search : ");
+    clearInputBuffer();
+    fgets( productID , sizeof(productID) , stdin);
+    getInputIdToSearch(productID);
+
+    int found= -1;
+    for( int index=0 ; index< *numberOfProduct ; index++)
+    {
+        if(strcmp((*Product)[index].productID, productID ) == 0)
+        {
+            found = index;
             break;
         }
     }
+
+    if(found == -1)
+    {
+        printf("\n No Product Exist with this id");
+        return;
+    }
+         
+    for( int index= found ; index< *numberOfProduct-1 ; index++)
+    {
+        (*Product)[index] = (*Product)[index+1];   
+    }
+
+    (*numberOfProduct)--;
+
+    struct ProductDetails *newProduct = realloc( *Product , (*numberOfProduct) * sizeof(ProductDetails));
+    if( newProduct == NULL  && *numberOfProduct > 0 )
+    {
+        printf("\n Memory Reallocation failed , keeping old array");
+        return ;
+    }
+    
+    *Product = newProduct;
+    printf("\nProduct deleted successfully! ");
 }
