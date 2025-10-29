@@ -388,7 +388,10 @@ void getValidProductName( const int numberOfProduct , char *product_name , const
         bool validName = true ; 
         for( int index=0 ; product_name[index] != '\0' ; index++ )
         {
-            if ( !isalpha((unsigned char)product_name[index]) && !isspace((unsigned char)product_name[index]) )
+            if ( !isalnum((unsigned char)product_name[index]) &&
+                !isspace((unsigned char)product_name[index]) &&
+                product_name[index] != '.' &&
+                product_name[index] != '-') 
             {
                 validName = false;
                 break;
