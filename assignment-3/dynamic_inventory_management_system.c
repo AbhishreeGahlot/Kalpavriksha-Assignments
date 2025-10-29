@@ -13,9 +13,9 @@ typedef struct ProductDetails {
 
 void menuPrint(void);
 void clearInputBuffer(void);
-bool isEmptyorSpaces(const char numOfProduct[]);
-bool isNumber(const char numOfProduct[]);
-bool isFloatNumber(const char numOfProduct[]);
+bool isEmptyorSpaces(const char number_of_product_str[]);
+bool isNumber(const char number_of_product_str[]);
+bool isFloatNumber(const char number_of_product_str[]);
 bool isSizeValid(const int numberOfProduct);
 int userInput(void);
 
@@ -140,15 +140,15 @@ void clearInputBuffer(void)
     while( (userInput = getchar()) != '\n'  && userInput!=EOF);
 }
 
-bool isEmptyorSpaces(const char numOfProduct[]) 
+bool isEmptyorSpaces(const char number_of_product_str[]) 
 {
-    if (numOfProduct[0] == '\0') 
+    if (number_of_product_str[0] == '\0') 
     {
         return true;
     }
-     for(int index=0 ; numOfProduct[index] != '\0' ; index++)
+     for(int index=0 ; number_of_product_str[index] != '\0' ; index++)
     {
-        if(!isspace(numOfProduct[index]))
+        if(!isspace(number_of_product_str[index]))
         {  
             return false; 
         }
@@ -156,26 +156,26 @@ bool isEmptyorSpaces(const char numOfProduct[])
     return true;
 }
 
-bool isNumber(const char numOfProduct[]) 
+bool isNumber(const char number_of_product_str[]) 
 {
     int index=0 ;   
-    while( numOfProduct[index] && isspace((unsigned char) numOfProduct[index]))
+    while( number_of_product_str[index] && isspace((unsigned char) number_of_product_str[index]))
     {
         index++;
     }
-    if( numOfProduct[index] && !isdigit((unsigned char) numOfProduct[index]))
+    if( number_of_product_str[index] && !isdigit((unsigned char) number_of_product_str[index]))
     {
         return false;
     }
-    while( numOfProduct[index] && isdigit((unsigned char) numOfProduct[index]))
+    while( number_of_product_str[index] && isdigit((unsigned char) number_of_product_str[index]))
     {
         index++;
     }
-    while( numOfProduct[index] && isspace((unsigned char) numOfProduct[index]))
+    while( number_of_product_str[index] && isspace((unsigned char) number_of_product_str[index]))
     {
         index++;
     }
-    return numOfProduct[index] == '\0'; 
+    return number_of_product_str[index] == '\0'; 
 }
 
 bool isFloatNumber(const char *product_price) 
@@ -334,7 +334,7 @@ void getValidID( const int numberOfProduct , char *product_id , ProductDetails *
             continue;
         }
 
-        if( productID <0 || productID > 10000)
+        if( productID <1 || productID > 10000)
         {
             printf(" Input should be between 1 and 10000 only! \n");
             printf("Enter Product ID again : ");
@@ -445,7 +445,7 @@ void getValidProductPrice(const int numberOfProduct, char *product_price, const 
 
         if( productPrice <0 || productPrice > 100000)
         {
-            printf(" Price should be between 1 and 100000 only! \n");
+            printf(" Price should be between 0 and 100000 only! \n");
             clearInputBuffer();
             printf("Enter  Price again : ");
             clearInputBuffer();
