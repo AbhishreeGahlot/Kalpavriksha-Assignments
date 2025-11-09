@@ -34,27 +34,28 @@ typedef struct FreeBlock
 }FreeBlock;
 
 
-bool isCommandCorrect ( FileNode **cwd,  char *inputCommand);
+bool isCommandCorrect ( FileNode **current_working_directory,  char *inputCommand);
 bool isValidName( const char *name);
+void processEscapesCharacter(char *inputString);
 
-void directoryInitialiser( FileNode **dir , char name_of_directory[]);
-FileNode* fileInitialiser(FileNode *cwd , char name_of_file[]);
+void directoryInitialiser( FileNode **directory_ptr , char name_of_directory[]);
+FileNode* fileInitialiser(FileNode *current_working_directory , char name_of_file[]);
 
-FileNode* makeDirectory ( FileNode *cwd , char argument[100]);
-FileNode* removeDirectory(FileNode *cwd , char argument[100]);
+FileNode* makeDirectory ( FileNode *current_working_directory , char argument[100]);
+FileNode* removeDirectory(FileNode *current_working_directory , char argument[100]);
 
-void listAll(FileNode *cwd);
-FileNode* changeDirectoryToParent ( FileNode *cwd );
-FileNode* changeDirectory ( FileNode *cwd , char directory_name[]);
-void printWorkingDirectory(FileNode *cwd);
+void listAll(FileNode *current_working_directory);
+FileNode* changeDirectoryToParent ( FileNode *current_working_directory );
+FileNode* changeDirectory ( FileNode *current_working_directory , char directory_name[]);
+void printWorkingDirectory(FileNode *current_working_directory);
 
 void displayDiskUsage();
 void freeAllNodes(FileNode *node);
-void exitFunction(FileNode *cwd);
+void exitFunction(FileNode *current_working_directory);
 
-void writeToFile(FileNode *cwd, char fileName[] , char fileContent[]);
-void read(FileNode *cwd , char fileName[]);
-void delete(FileNode *cwd ,char fileName[]);
+void writeToFile(FileNode *current_working_directory, char fileName[] , char fileContent[]);
+void read(FileNode *current_working_directory , char fileName[]);
+void delete(FileNode *current_working_directory ,char fileName[]);
 
 int main()
 {
@@ -63,12 +64,12 @@ int main()
 
     FileNode *root = NULL;
     directoryInitialiser( &root , "/");
-    FileNode *cwd = root;
+    FileNode *current_working_directory = root;
 
     char command[100];
     while(1)
     {
-        printf("\n%s >",cwd->name);
+        printf("\n%s >",current_working_directory->name);
         fgets( command , sizeof(command) , stdin);
         if (!strchr(command, '\n')) {
             int ch;
@@ -77,7 +78,7 @@ int main()
 
         command[ strcspn( command , "\n")] = '\0';
     
-        if( !isCommandCorrect( &cwd , command))
+        if( !isCommandCorrect( &current_working_directory , command))
         {
             printf("Enter a valid command\n");
         }
@@ -101,7 +102,7 @@ bool isValidName( const char *name)
     return true;
 }
 
-bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
+bool isCommandCorrect ( FileNode **current_working_directory,  char *inputCommand)
 {
     char command[50];
     char argument[100];
@@ -123,7 +124,7 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
         }
         else
         {
-            FileNode* newDir = makeDirectory( *cwd , argument);
+            FileNode* newDir = makeDirectory( *current_working_directory , argument);
             if(newDir != NULL)
             {
                 printf("Directory '%s' created successfully.\n" , newDir->name);
@@ -144,7 +145,7 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
         }
         else
         {
-            *cwd = removeDirectory( *cwd , argument);
+            *current_working_directory = removeDirectory( *current_working_directory , argument);
             return true;
         }
     }
@@ -153,7 +154,7 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
     {
         if (strcmp(argument, "..") == 0 || strlen(argument) == 0)
         {
-            *cwd = changeDirectoryToParent(*cwd);
+            *current_working_directory = changeDirectoryToParent(*current_working_directory);
         }
         else    
         {
@@ -161,7 +162,7 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
             {
                 printf(" Invalid Characters in arguments \n");
             }
-            *cwd = changeDirectory( *cwd , argument);
+            *current_working_directory = changeDirectory( *current_working_directory , argument);
         }
         return true;
     }
@@ -169,13 +170,13 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
     //4. ls
     if( strcmp(command , "ls") == 0 && strlen(argument)==0 )
     {
-        listAll(*cwd);
+        listAll(*current_working_directory);
         return true;
     }
     //5. pwd
     if( strcmp(command , "pwd") == 0 && strlen(argument)==0 )
     {
-        printWorkingDirectory(*cwd);
+        printWorkingDirectory(*current_working_directory);
         return true;
     }
     //6. df
@@ -187,7 +188,7 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
     //7. exit
     if( strcmp(command , "exit") == 0 && strlen(argument)==0)
     {
-        exitFunction(*cwd);
+        exitFunction(*current_working_directory);
         return true;
     }
 
@@ -211,7 +212,7 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
         }
         else
         {
-            FileNode *newFile = fileInitialiser(*cwd, argument);
+            FileNode *newFile = fileInitialiser(*current_working_directory, argument);
             if (newFile != NULL)
                 printf("File '%s' created successfully.\n", newFile->name);
         }
@@ -235,7 +236,8 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
             return true;
         }
            
-        writeToFile(*cwd, fileName, fileContent);
+        processEscapesCharacter(fileContent);
+        writeToFile(*current_working_directory, fileName, fileContent);
         return true;
     }
     //10. read
@@ -251,7 +253,7 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
         }
         else
         {
-            read( *cwd  , argument);
+            read( *current_working_directory  , argument);
             return true;
         }
     }
@@ -268,7 +270,7 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
         }
         else
         {
-            delete( *cwd , argument);
+            delete( *current_working_directory , argument);
             return true;
         }
     }
@@ -277,7 +279,7 @@ bool isCommandCorrect ( FileNode **cwd,  char *inputCommand)
 }
 
 
-void directoryInitialiser( FileNode **dir , char name_of_directory[])
+void directoryInitialiser( FileNode **directory_ptr , char name_of_directory[])
 {
     FileNode *directory = malloc( sizeof( FileNode ) );
     if( directory == NULL )
@@ -293,17 +295,17 @@ void directoryInitialiser( FileNode **dir , char name_of_directory[])
     directory->next = directory; 
     directory->contentSize = 0;
 
-    for (int i = 0; i < SIZE_FOR_BLOCK_POINTERS; i++)
+    for (int index = 0; index < SIZE_FOR_BLOCK_POINTERS; index++)
     {
-        directory->blockPointers[i] = -1;
+        directory->blockPointers[index] = -1;
     }
 
-    *dir = directory;
+    *directory_ptr= directory;
 }
 
-FileNode* fileInitialiser(FileNode *cwd , char name_of_file[])
+FileNode* fileInitialiser(FileNode *current_working_directory , char name_of_file[])
 {
-    FileNode* child = cwd->child;
+    FileNode* child = current_working_directory->child;
     
     if( child != NULL)
     {
@@ -328,7 +330,7 @@ FileNode* fileInitialiser(FileNode *cwd , char name_of_file[])
 
     strcpy( file->name , name_of_file);
     file->isDirectory = false;
-    file->parent = cwd; 
+    file->parent = current_working_directory; 
     file->child = NULL;  
     file->contentSize = 0;
     file->next = NULL;
@@ -339,15 +341,15 @@ FileNode* fileInitialiser(FileNode *cwd , char name_of_file[])
         file->blockPointers[i]= -1;
     }
 
-    if( cwd->child == NULL)
+    if( current_working_directory->child == NULL)
     {
-        cwd->child = file;
+        current_working_directory->child = file;
         file->prev = file;
         file->next = file;
     }
     else
     {
-        FileNode* head = cwd->child;
+        FileNode* head = current_working_directory->child;
         FileNode* tail = head->prev;
 
         tail->next = file;
@@ -359,9 +361,9 @@ FileNode* fileInitialiser(FileNode *cwd , char name_of_file[])
     return file;
 }
 
-FileNode* makeDirectory ( FileNode *cwd , char argument[100]  )
+FileNode* makeDirectory ( FileNode *current_working_directory , char argument[100]  )
 {
-    FileNode *childNode = cwd->child ;
+    FileNode *childNode = current_working_directory->child ;
     if( childNode != NULL)
     {
         do
@@ -372,7 +374,7 @@ FileNode* makeDirectory ( FileNode *cwd , char argument[100]  )
                 return NULL;
             }
             childNode = childNode->next;
-        } while ( childNode != cwd->child) ;
+        } while ( childNode != current_working_directory->child) ;
     } 
 
     FileNode *newDirectory = malloc( sizeof( FileNode ));
@@ -384,18 +386,18 @@ FileNode* makeDirectory ( FileNode *cwd , char argument[100]  )
 
     strcpy(newDirectory->name , argument);
     newDirectory->isDirectory = true;
-    newDirectory->parent = cwd;
+    newDirectory->parent = current_working_directory;
     newDirectory->child = NULL;
 
-    if( cwd->child == NULL) 
+    if( current_working_directory->child == NULL) 
     {
         newDirectory->prev = newDirectory;
         newDirectory->next = newDirectory;
-        cwd->child = newDirectory;
+        current_working_directory->child = newDirectory;
     }
     else
     {
-        FileNode *head = cwd->child;
+        FileNode *head = current_working_directory->child;
         FileNode *tail = head->prev;
 
         tail->next = newDirectory;
@@ -407,9 +409,9 @@ return newDirectory;
 }
 
 
-void listAll(FileNode *cwd)
+void listAll(FileNode *current_working_directory)
 {
-    FileNode *childNode = cwd->child ;
+    FileNode *childNode = current_working_directory->child ;
     if( childNode == NULL)
     {
         printf("Directory is empty!\n");
@@ -428,33 +430,33 @@ void listAll(FileNode *cwd)
                 printf(" %s\n",childNode->name);
             }
             childNode = childNode->next;
-        } while ( childNode != cwd->child) ;
+        } while ( childNode != current_working_directory->child) ;
     } 
 }
 
-FileNode* changeDirectoryToParent ( FileNode *cwd )
+FileNode* changeDirectoryToParent ( FileNode *current_working_directory )
 {
-    if( strcmp(cwd->name , "/")==0)
+    if( strcmp(current_working_directory->name , "/")==0)
     {
         printf("Already at root directory\n");
-        return cwd;
+        return current_working_directory;
     }
     else
     {
-        cwd = cwd->parent;
-        printf("Moved to /%s", cwd->name);
+        current_working_directory = current_working_directory->parent;
+        printf("Moved to /%s", current_working_directory->name);
         printf("\n");
-        return cwd;
+        return current_working_directory;
     }
 }
 
-FileNode* changeDirectory ( FileNode *cwd , char directory_name[])
+FileNode* changeDirectory ( FileNode *current_working_directory , char directory_name[])
 {
-    FileNode* directoryToSearch = cwd->child;
+    FileNode* directoryToSearch = current_working_directory->child;
     if (directoryToSearch == NULL)
     {
-        printf("No subdirectories under '%s'\n", cwd->name);
-        return cwd;
+        printf("No subdirectories under '%s'\n", current_working_directory->name);
+        return current_working_directory;
     }
 
     FileNode* head = directoryToSearch;
@@ -462,25 +464,25 @@ FileNode* changeDirectory ( FileNode *cwd , char directory_name[])
     {
         if( directoryToSearch->isDirectory && strcmp(directoryToSearch->name, directory_name)==0 )
         {
-            cwd = directoryToSearch;
-            printf("\n Moved to /%s ", cwd->name);
+            current_working_directory = directoryToSearch;
+            printf("\n Moved to /%s ", current_working_directory->name);
             printf("\n");
-            return cwd;
+            return current_working_directory;
         }
             
         directoryToSearch = directoryToSearch->next;
     } while ( directoryToSearch != head) ;
 
-    printf("Directory '%s' not found under '%s'\n", directory_name, cwd->name);
-    return cwd;
+    printf("Directory '%s' not found under '%s'\n", directory_name, current_working_directory->name);
+    return current_working_directory;
 }
 
-void printWorkingDirectory(FileNode *cwd)
+void printWorkingDirectory(FileNode *current_working_directory)
 {
     char path[100][NAME_SIZE];
     int count = 0;
 
-    FileNode* currentDirectory = cwd;
+    FileNode* currentDirectory = current_working_directory;
     
     while( currentDirectory != NULL)
     {   
@@ -500,15 +502,15 @@ void printWorkingDirectory(FileNode *cwd)
     printf("\n");
 }
 
-FileNode* removeDirectory(FileNode *cwd , char argument[100])
+FileNode* removeDirectory(FileNode *current_working_directory , char argument[100])
 {
-    if( cwd->child == NULL) 
+    if( current_working_directory->child == NULL) 
     {
-        printf("No subdirectories under %s directory\n ",cwd->name);
-        return cwd;
+        printf("No subdirectories under %s directory\n ",current_working_directory->name);
+        return current_working_directory;
     }
 
-    FileNode* current = cwd->child;
+    FileNode* current = current_working_directory->child;
     FileNode* head = current;
     FileNode* directoryToRemove = NULL;
 
@@ -524,35 +526,35 @@ FileNode* removeDirectory(FileNode *cwd , char argument[100])
 
     if( directoryToRemove == NULL ) 
     {
-        printf("Directory '%s' not found under '%s'\n",argument, cwd->name);
-        return cwd;
+        printf("Directory '%s' not found under '%s'\n",argument, current_working_directory->name);
+        return current_working_directory;
     }   
     
     if( directoryToRemove->child != NULL) 
     {
         printf("The %s directory is not empty , can't be deleted\n",directoryToRemove->name);
-        return cwd;
+        return current_working_directory;
     }
  
     if( directoryToRemove->next == directoryToRemove && directoryToRemove->prev == directoryToRemove)
     {
-        cwd->child = NULL;
+        current_working_directory->child = NULL;
     }
     else 
     {
         directoryToRemove->prev->next = directoryToRemove->next;
         directoryToRemove->next->prev = directoryToRemove->prev;
 
-        if( cwd->child == directoryToRemove) 
+        if( current_working_directory->child == directoryToRemove) 
         {
-            cwd->child = directoryToRemove->next;
+            current_working_directory->child = directoryToRemove->next;
         }
     }
 
     free(directoryToRemove);
     printf("Directory '%s' removed successfully.\n", argument);
     directoryToRemove = NULL;
-    return cwd;
+    return current_working_directory;
 }
 
 void displayDiskUsage()
@@ -579,16 +581,16 @@ void displayDiskUsage()
     printf("Disk Usage   : %.2f %% \n", (float)(usedBlocks) / totalBlocks * 100);
 }   
 
-void writeToFile(FileNode *cwd, char fileName[] , char fileContent[])
+void writeToFile(FileNode *current_working_directory, char fileName[] , char fileContent[])
 {
-    if( cwd->child == NULL) 
+    if( current_working_directory->child == NULL) 
     {
-        printf("No files under %s directory\n ",cwd->name);
+        printf("No files under %s directory\n ",current_working_directory->name);
         return;
     }
 
     FileNode* fileToWrite = NULL;
-    FileNode* child = cwd->child;
+    FileNode* child = current_working_directory->child;
     FileNode* head = child;
     do
     {
@@ -602,7 +604,7 @@ void writeToFile(FileNode *cwd, char fileName[] , char fileContent[])
     
     if( fileToWrite == NULL ) 
     {
-        printf("File'%s' not found under '%s'\n",fileName, cwd->name);
+        printf("File'%s' not found under '%s'\n",fileName, current_working_directory->name);
         return;
     }   
 
@@ -665,16 +667,16 @@ void writeToFile(FileNode *cwd, char fileName[] , char fileContent[])
     printf("Data written successfully (size=%d bytes).\n", contentSize);
 }
 
-void read(FileNode *cwd , char fileName[])
+void read(FileNode *current_working_directory , char fileName[])
 {
-    if( cwd->child == NULL )
+    if( current_working_directory->child == NULL )
     {
         printf("No file in this directory\n");
         return;
     }
 
     FileNode* fileToRead = NULL;
-    FileNode* child = cwd->child;
+    FileNode* child = current_working_directory->child;
     FileNode* head = child;
 
     do
@@ -723,16 +725,16 @@ void read(FileNode *cwd , char fileName[])
     printf("%s\n", contentOfFile);
 }
 
-void delete(FileNode *cwd ,char fileName[])
+void delete(FileNode *current_working_directory ,char fileName[])
 {
-    if( cwd->child == NULL )
+    if( current_working_directory->child == NULL )
     {
         printf("No file in this directory\n");
         return;
     }
 
     FileNode* fileToDelete = NULL;
-    FileNode* child = cwd->child;
+    FileNode* child = current_working_directory->child;
     FileNode* head = child;
 
     do
@@ -765,16 +767,16 @@ void delete(FileNode *cwd ,char fileName[])
 
     if (fileToDelete->next == fileToDelete && fileToDelete->prev == fileToDelete)
     {
-        cwd->child = NULL;
+        current_working_directory->child = NULL;
     }
     else
     {
         fileToDelete->prev->next = fileToDelete->next;
         fileToDelete->next->prev = fileToDelete->prev;
 
-        if (cwd->child == fileToDelete)
+        if (current_working_directory->child == fileToDelete)
         {
-            cwd->child = fileToDelete->next;
+            current_working_directory->child = fileToDelete->next;
         }
     }
 
@@ -807,14 +809,14 @@ void freeAllNodes(FileNode *node)
     free(node);
 }
 
-void exitFunction(FileNode *cwd)
+void exitFunction(FileNode *current_working_directory)
 {
-    while (cwd->parent != NULL)
+    while (current_working_directory->parent != NULL)
     {
-        cwd = cwd->parent;
+        current_working_directory = current_working_directory->parent;
     }
 
-    freeAllNodes(cwd);
+    freeAllNodes(current_working_directory);
 
     for (int index = 0; index < NUMBER_OF_BLOCKS; index++)
     {
@@ -824,4 +826,30 @@ void exitFunction(FileNode *cwd)
 
     printf("Memory released. Exiting program...\n");
     exit(0);
+}
+
+void processEscapesCharacter(char *inputString)
+{
+    if (inputString == NULL) 
+    {
+        return;
+    }
+
+    char *source = inputString;
+    char *destination = inputString;
+
+    while (*source)
+    {
+        if (*source == '\\' && *(source + 1) == 'n')
+        {
+            *destination++ = '\n';
+            source += 2; 
+        }
+        else
+        {
+            *destination++ = *source++;
+        }
+    }
+
+    *destination = '\0';
 }
