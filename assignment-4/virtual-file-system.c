@@ -12,6 +12,9 @@
 char VIRTUAL_DISK[NUMBER_OF_BLOCKS][BLOCK_SIZE];
 bool blockUsed[NUMBER_OF_BLOCKS]={false};
 
+int totalBlocks = 1024;
+int usedBlocks = 0;
+
 typedef struct FileNode 
 {
     char name[NAME_SIZE];
@@ -33,6 +36,8 @@ typedef struct FreeBlock
     struct FreeBlock *next;
 }FreeBlock;
 
+FreeBlock *freeBlockHead = NULL;
+FreeBlock *freeBlockTail = NULL;
 
 bool isCommandCorrect ( FileNode **current_working_directory,  char *inputCommand);
 bool isValidName( const char *name);
@@ -40,6 +45,7 @@ void processEscapesCharacter(char *inputString);
 
 void directoryInitialiser( FileNode **directory_ptr , char name_of_directory[]);
 FileNode* fileInitialiser(FileNode *current_working_directory , char name_of_file[]);
+void initializeFreeBlockList(void);
 
 FileNode* makeDirectory ( FileNode *current_working_directory , char argument[100]);
 FileNode* removeDirectory(FileNode *current_working_directory , char argument[100]);
@@ -53,7 +59,7 @@ void displayDiskUsage();
 void freeAllNodes(FileNode *node);
 void exitFunction(FileNode *current_working_directory);
 
-void writeToFile(FileNode *current_working_directory, char fileName[] , char fileContent[]);
+void writeToFile(FileNode *current_working_directory, char *fileName, char *fileContent);
 void read(FileNode *current_working_directory , char fileName[]);
 void delete(FileNode *current_working_directory ,char fileName[]);
 
@@ -63,6 +69,7 @@ int main()
     printf("\nCompact VFS - ready. Type 'exit' to quit. ");
 
     FileNode *root = NULL;
+    initializeFreeBlockList();
     directoryInitialiser( &root , "/");
     FileNode *current_working_directory = root;
 
@@ -89,6 +96,12 @@ int main()
 
 bool isValidName( const char *name)
 {
+    if (strlen(name) > NAME_SIZE - 1)  
+    {
+        printf("Error: Name too long (max %d characters allowed)\n", NAME_SIZE - 1);
+        return false;
+    }
+
     for( int index =0 ; name[index] != '\0' ; index++)
     {
         char indexCharacter =  name[index];
@@ -109,7 +122,12 @@ bool isCommandCorrect ( FileNode **current_working_directory,  char *inputComman
     command[0]='\0';
     argument[0]='\0'; 
 
-    sscanf(inputCommand, "%49s %99[0-9a-zA-Z._@/-]" , command , argument  );
+    while (isspace(*inputCommand)) 
+    {   
+        inputCommand++;
+    }
+
+    sscanf(inputCommand, "%49s %99[^\n]" , command , argument);
 
     //1. mkdir
     if( strcmp( command , "mkdir") == 0 )
@@ -220,22 +238,38 @@ bool isCommandCorrect ( FileNode **current_working_directory,  char *inputComman
     }
 
     //9. write 
-    if( strcmp(command , "write") == 0 )
+    if (strcmp(command, "write") == 0)
     {
         char fileName[NAME_SIZE] = {0};
-        char fileContent [BLOCK_SIZE]={0};
+        char fileContent[BLOCK_SIZE] = {0};
 
-        if (sscanf(inputCommand, "write %49s \"%511[^\"]\"", fileName, fileContent) != 2)
+        sscanf(inputCommand, "write %49s", fileName);
+
+        const char *start = strchr(inputCommand, '"');
+        if (start)
+        {
+            start++;
+            const char *end = strchr(start, '"');
+            if (end)
+            {
+                size_t length = end - start;
+                strncpy(fileContent, start, length);
+                fileContent[length] = '\0';
+            }
+        }
+
+        if (strlen(fileName) == 0 || strlen(fileContent) == 0)
         {
             printf("Usage : write <file-name> \"<content>\"\n");
             return true;
         }
-        else if (!isValidName(fileName))
+
+        if (!isValidName(fileName))
         {
             printf(" Invalid Characters in fileName \n");
             return true;
         }
-           
+
         processEscapesCharacter(fileContent);
         writeToFile(*current_working_directory, fileName, fileContent);
         return true;
@@ -328,7 +362,9 @@ FileNode* fileInitialiser(FileNode *current_working_directory , char name_of_fil
         return NULL;
     }
 
-    strcpy( file->name , name_of_file);
+    
+    strncpy(file->name ,  name_of_file, NAME_SIZE - 1);
+    file->name[NAME_SIZE - 1] = '\0';
     file->isDirectory = false;
     file->parent = current_working_directory; 
     file->child = NULL;  
@@ -384,7 +420,8 @@ FileNode* makeDirectory ( FileNode *current_working_directory , char argument[10
         return NULL;
     }
 
-    strcpy(newDirectory->name , argument);
+    strncpy(newDirectory->name, argument, NAME_SIZE - 1);
+    newDirectory->name[NAME_SIZE - 1] = '\0';
     newDirectory->isDirectory = true;
     newDirectory->parent = current_working_directory;
     newDirectory->child = NULL;
@@ -444,7 +481,7 @@ FileNode* changeDirectoryToParent ( FileNode *current_working_directory )
     else
     {
         current_working_directory = current_working_directory->parent;
-        printf("Moved to /%s", current_working_directory->name);
+        printf("Moved to '%s'\n", current_working_directory->name);
         printf("\n");
         return current_working_directory;
     }
@@ -479,27 +516,24 @@ FileNode* changeDirectory ( FileNode *current_working_directory , char directory
 
 void printWorkingDirectory(FileNode *current_working_directory)
 {
-    char path[100][NAME_SIZE];
-    int count = 0;
-
-    FileNode* currentDirectory = current_working_directory;
-    
-    while( currentDirectory != NULL)
-    {   
-       strcpy(path[count], currentDirectory->name);
-       count++;
-       currentDirectory = currentDirectory->parent;
-    }
-
-    printf("\n");
-    for (int index = count - 1; index >= 0; index--)
+    if (!current_working_directory)
     {
-        if (strcmp(path[index], "/") == 0)
-            printf("/");
-        else
-            printf("%s/", path[index]);
+        return;
     }
-    printf("\n");
+
+    if (current_working_directory->parent)
+    {
+        printWorkingDirectory(current_working_directory->parent);
+        if (strcmp(current_working_directory->name, "/") != 0)
+        {
+            printf("%s/", current_working_directory->name);
+        }
+    }
+
+    else
+    {
+        printf("/");
+    }
 }
 
 FileNode* removeDirectory(FileNode *current_working_directory , char argument[100])
@@ -559,29 +593,16 @@ FileNode* removeDirectory(FileNode *current_working_directory , char argument[10
 
 void displayDiskUsage()
 {
-    int totalBlocks = NUMBER_OF_BLOCKS;
-    int usedBlocks = 0;
-    int freeBlocks = 0;
-
-    for (int index = 0; index < NUMBER_OF_BLOCKS; index++)
-    {
-        if (blockUsed[index])
-        {
-            usedBlocks++;
-        }
-        else
-        {
-            freeBlocks++;
-        }
-    }
+    int freeBlocks = totalBlocks - usedBlocks;
 
     printf("Total Blocks : %d\n", totalBlocks);
     printf("Used Blocks  : %d\n", usedBlocks);
     printf("Free Blocks  : %d\n", freeBlocks);
-    printf("Disk Usage   : %.2f %% \n", (float)(usedBlocks) / totalBlocks * 100);
+    float usage = (totalBlocks > 0) ? ((float)usedBlocks / totalBlocks * 100) : 0.0f;
+    printf("Disk Usage   : %.2f %% \n",usage);
 }   
 
-void writeToFile(FileNode *current_working_directory, char fileName[] , char fileContent[])
+void writeToFile(FileNode *current_working_directory, char *fileName, char *fileContent) 
 {
     if( current_working_directory->child == NULL) 
     {
@@ -590,8 +611,9 @@ void writeToFile(FileNode *current_working_directory, char fileName[] , char fil
     }
 
     FileNode* fileToWrite = NULL;
-    FileNode* child = current_working_directory->child;
-    FileNode* head = child;
+    FileNode* head = current_working_directory->child;
+    FileNode* child = head;
+    
     do
     {
         if ( strcmp( child->name , fileName) == 0)
@@ -608,63 +630,73 @@ void writeToFile(FileNode *current_working_directory, char fileName[] , char fil
         return;
     }   
 
+    if (fileToWrite->isDirectory) 
+    {
+        printf("Cannot write to a directory.\n");
+        return;
+    }
+
     int contentSize = strlen(fileContent);
     int requiredBlocks = (contentSize + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
-    if( requiredBlocks > SIZE_FOR_BLOCK_POINTERS)
+    if (requiredBlocks > SIZE_FOR_BLOCK_POINTERS) 
     {
-        printf("Error: File too large. Maximum %d blocks per file.\n", SIZE_FOR_BLOCK_POINTERS);
+        printf("File too large. Maximum size is %d bytes.\n", SIZE_FOR_BLOCK_POINTERS * BLOCK_SIZE);
         return;
     }
 
-    int freeSpaceCount = 0;
-    for( int index=0 ; index<NUMBER_OF_BLOCKS ; index++)
+    int freeBlocks = 0;
+    FreeBlock *tempCount = freeBlockHead;
+    while (tempCount) 
     {
-        if( !blockUsed[index])
-        {
-            freeSpaceCount++;
-        }
+        freeBlocks++;
+        tempCount = tempCount->next;
     }
 
-    if( freeSpaceCount < requiredBlocks)
+    if (freeBlocks < requiredBlocks) 
     {
-        printf("Error: Disk full! Not enough free space to write file.\n");
+        printf("Not enough disk space to write file.\n");
         return;
     }
     
-    
-    for (int index = 0; index< SIZE_FOR_BLOCK_POINTERS; index++)
+    int allocated = 0;
+    FreeBlock *temp = freeBlockHead;
+    while (temp && allocated < requiredBlocks) 
     {
-        if (fileToWrite->blockPointers[index] != -1)
+        int blockIndex = temp->index;
+        blockUsed[blockIndex] = true;
+        usedBlocks++;
+        fileToWrite->blockPointers[allocated++] = blockIndex;
+
+        freeBlockHead = temp->next;
+        if (freeBlockHead) 
         {
-            int oldBlock = fileToWrite->blockPointers[index];
-            blockUsed[oldBlock] = false;
-            memset(VIRTUAL_DISK[oldBlock], 0, BLOCK_SIZE);
-            fileToWrite->blockPointers[index] = -1;
+            freeBlockHead->prev = NULL;
         }
+        else 
+        {
+            freeBlockTail = NULL;
+        }
+
+        FreeBlock *toFree = temp;
+        temp = temp->next;
+        free(toFree);
     }
 
     int written = 0;
-    for (int index = 0, block = 0; index < NUMBER_OF_BLOCKS && block < requiredBlocks; index++)
+    for (int index = 0; index < allocated; index++) 
     {
-        if (!blockUsed[index])
-        {
-            blockUsed[index] = true;
-            fileToWrite->blockPointers[block] = index;
-
-            int remaining = contentSize - written;
-            int toWrite = (remaining > BLOCK_SIZE) ? BLOCK_SIZE : remaining;
-
-            memcpy(VIRTUAL_DISK[index], fileContent + written, toWrite);
-
-            written += toWrite;
-            block++;
-        }
+        int blockIndex = fileToWrite->blockPointers[index];
+        int remaining = contentSize - written;
+        int toWrite = (remaining > BLOCK_SIZE) ? BLOCK_SIZE : remaining;
+        
+        memcpy(VIRTUAL_DISK[blockIndex], fileContent + written, toWrite);
+        written += toWrite;
     }
 
     fileToWrite->contentSize = contentSize;
 
-    printf("Data written successfully (size=%d bytes).\n", contentSize);
+    printf("Content written to file '%s'. (%d bytes)\n", fileName, contentSize);
 }
 
 void read(FileNode *current_working_directory , char fileName[])
@@ -676,8 +708,8 @@ void read(FileNode *current_working_directory , char fileName[])
     }
 
     FileNode* fileToRead = NULL;
-    FileNode* child = current_working_directory->child;
-    FileNode* head = child;
+    FileNode* head = current_working_directory->child;
+    FileNode* child = head;
 
     do
     {
@@ -687,7 +719,7 @@ void read(FileNode *current_working_directory , char fileName[])
             break;
         }
         child = child->next;
-    } while (head != child );
+    } while (child != head );
     
 
     if( fileToRead == NULL)
@@ -702,27 +734,20 @@ void read(FileNode *current_working_directory , char fileName[])
         return;
     }
 
-    char contentOfFile[fileToRead->contentSize + 1];
-    int bytesRead = 0;
+    printf("File content (%d bytes):\n", fileToRead->contentSize);
 
-    for (int index = 0; index < SIZE_FOR_BLOCK_POINTERS && bytesRead < fileToRead->contentSize; index++)
+    int remaining = fileToRead->contentSize;
+    for (int index = 0; index < SIZE_FOR_BLOCK_POINTERS && remaining > 0; index++) 
     {
         int blockIndex = fileToRead->blockPointers[index];
-        if (blockIndex == -1)
-        {
-            break;
-        }
+        if (blockIndex == -1) break;
 
-        int remaining = fileToRead->contentSize - bytesRead;
         int toRead = (remaining > BLOCK_SIZE) ? BLOCK_SIZE : remaining;
-
-        memcpy(contentOfFile + bytesRead, VIRTUAL_DISK[blockIndex], toRead);
-        bytesRead += toRead;
-
+        fwrite(VIRTUAL_DISK[blockIndex], 1, toRead, stdout);
+        remaining -= toRead;
     }
 
-    contentOfFile[bytesRead] = '\0'; 
-    printf("%s\n", contentOfFile);
+    printf("\n"); 
 }
 
 void delete(FileNode *current_working_directory ,char fileName[])
@@ -734,8 +759,8 @@ void delete(FileNode *current_working_directory ,char fileName[])
     }
 
     FileNode* fileToDelete = NULL;
-    FileNode* child = current_working_directory->child;
-    FileNode* head = child;
+    FileNode* head = current_working_directory->child;
+    FileNode* child = head;
 
     do
     {
@@ -745,7 +770,7 @@ void delete(FileNode *current_working_directory ,char fileName[])
             break;
         }
         child = child->next;
-    } while (head != child );
+    } while (child != head);
     
 
     if( fileToDelete == NULL)
@@ -754,16 +779,33 @@ void delete(FileNode *current_working_directory ,char fileName[])
         return;
     }
 
-    for (int index = 0; index < SIZE_FOR_BLOCK_POINTERS; index++)
+    for (int index = 0; index < SIZE_FOR_BLOCK_POINTERS; index++) 
     {
         int blockIndex = fileToDelete->blockPointers[index];
-        if (blockIndex != -1)
+        if (blockIndex != -1) 
         {
             blockUsed[blockIndex] = false;
             memset(VIRTUAL_DISK[blockIndex], 0, BLOCK_SIZE);
+
+            FreeBlock *newBlock = malloc(sizeof(FreeBlock));
+            newBlock->index = blockIndex;
+            newBlock->next = NULL;
+            newBlock->prev = freeBlockTail;
+            if (freeBlockTail)
+                freeBlockTail->next = newBlock;
+            else
+                freeBlockHead = newBlock;
+            freeBlockTail = newBlock;
+
             fileToDelete->blockPointers[index] = -1;
+
+            if (usedBlocks > 0)
+            {
+                usedBlocks--;
+            }
         }
     }
+
 
     if (fileToDelete->next == fileToDelete && fileToDelete->prev == fileToDelete)
     {
@@ -789,25 +831,39 @@ void delete(FileNode *current_working_directory ,char fileName[])
 void freeAllNodes(FileNode *node)
 {
     if (node == NULL)
-    {
         return;
-    }
 
-    if (node->child != NULL)
+    FileNode *child = node->child;
+    if (child)
     {
-        FileNode *child = node->child;
-        FileNode *head = child;
-
+        FileNode *start = child;
         do
         {
             FileNode *next = child->next;
             freeAllNodes(child);
-            child = next;
-        } while (child != head);
+            child = (next == start) ? NULL : next;
+        } while (child);
+    }
+
+    if (!node->isDirectory)
+    {
+        for (int index = 0; index < SIZE_FOR_BLOCK_POINTERS; index++)
+        {
+            int idx = node->blockPointers[index];
+            if (idx != -1)
+            {
+                blockUsed[idx] = false;
+                if (usedBlocks > 0)
+                {
+                    usedBlocks--;
+                }
+            }
+        }
     }
 
     free(node);
 }
+
 
 void exitFunction(FileNode *current_working_directory)
 {
@@ -818,15 +874,18 @@ void exitFunction(FileNode *current_working_directory)
 
     freeAllNodes(current_working_directory);
 
-    for (int index = 0; index < NUMBER_OF_BLOCKS; index++)
+    FreeBlock *temp;
+    while (freeBlockHead)
     {
-        memset(VIRTUAL_DISK[index], 0, BLOCK_SIZE);
-        blockUsed[index] = false;
+        temp = freeBlockHead;
+        freeBlockHead = freeBlockHead->next;
+        free(temp);
     }
 
     printf("Memory released. Exiting program...\n");
     exit(0);
 }
+
 
 void processEscapesCharacter(char *inputString)
 {
@@ -852,4 +911,23 @@ void processEscapesCharacter(char *inputString)
     }
 
     *destination = '\0';
+}
+
+void initializeFreeBlockList() {
+    for (int index = 0; index < NUMBER_OF_BLOCKS; index++) 
+    {
+        FreeBlock *newBlock = malloc(sizeof(FreeBlock));
+        newBlock->index = index;
+        newBlock->prev = freeBlockTail;
+        newBlock->next = NULL;
+        if (freeBlockTail)
+            freeBlockTail->next = newBlock;
+        else
+            freeBlockHead = newBlock;
+        freeBlockTail = newBlock;
+        blockUsed[index] = false;
+    }
+
+    totalBlocks = NUMBER_OF_BLOCKS;
+    usedBlocks = 0;
 }
