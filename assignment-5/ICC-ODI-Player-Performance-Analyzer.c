@@ -64,7 +64,7 @@ bool inputFloatValidation(char input[] , int inputSize);
 
 void addNewPlayers(TeamData teamsData[]);
 bool isDuplicatePlayerID(TeamData teamsData[], int playerID);
-void updateTeamAvgStrikeRate(TeamData *team);
+void recalculateTeamAvgStrikeRate(TeamData *team);
 
 void displayPlayerOFTeam(TeamData teamsData[], int teamID);
 void printNodes( PlayerNode *head);
@@ -284,6 +284,7 @@ bool isFloatNumber(const char *input)
 {
     int index=0 ;
     bool hasDecimalPoint = false;   
+    bool hasDigit = false;
     while( input[index] && isspace((unsigned char) input[index]))
     {
         index++;
@@ -296,7 +297,7 @@ bool isFloatNumber(const char *input)
     {
         if(isdigit((unsigned char) input[index]))
         {
-            index++;
+            hasDigit = true;
         }
         else if (  input[index] =='.')
         {
@@ -305,19 +306,25 @@ bool isFloatNumber(const char *input)
                 return false;
             }
             hasDecimalPoint = true;
-            index++;
+        }
+        else if (isspace((unsigned char)input[index]))
+        {
+            while (input[index])
+            {
+                if (!isspace((unsigned char)input[index]))
+                    return false;
+                index++;
+            }
+            break;
         }
         else
         {
-            break;
+            return false;
         }  
-    }
-    while( input[index] && isspace((unsigned char) input[index]))
-    {
         index++;
     }
-    return input[index] == '\0'; 
-}
+    return hasDigit; 
+}   
 
 bool inputFloatValidation(char input[] , int inputSize)
 {
@@ -363,48 +370,41 @@ void initialiseTeamsData( TeamData teamsData[])
     }
 }
 
-int findTeamIndex( const char teamName[] )
+int findTeamIndex(const char teamName[])
 {
-    int left =0;
-    int right = 9;
-
-    while( left<= right)
+    for (int i = 0; i < teamCount; ++i)
     {
-        int mid = left + ( right - left ) / 2;
-        int flag = strcmp ( teams[mid] , teamName);
-
-        if( flag == 0)
-        {
-            return mid;
-        }
-        else if( flag < 0 )
-        {
-            left = mid + 1;
-        }
-        else
-        {
-            right = mid -1 ;
-        }
+        if (strcmp(teams[i], teamName) == 0)
+            return i;
     }
-
     return -1;
 }
 
-int computePerformanceIndex ( PlayerData playerData)
+int computePerformanceIndex(PlayerData p)
 {
-    if( strcmp( playerData.role , "Batsman") == 0)
+    float performance_index = 0.0f;
+
+    if (strcmp(p.role, "Batsman") == 0)
     {
-        return (int)roundf((playerData.battingAverage * playerData.strikeRate) / 100);
+        performance_index = (p.battingAverage * p.strikeRate) / 100.0f;
     }
-    else if ( strcmp( playerData.role , "Bowler") == 0 )
+    else if (strcmp(p.role, "Bowler") == 0)
     {
-        return (playerData.wickets * 2) + ( 100 - playerData.economyRate);
+        performance_index = (p.wickets * 2.0f) + (100.0f - p.economyRate);
     }
-    else
+    else  
     {
-        return ((( playerData.battingAverage * playerData.strikeRate) /100 ) + ( playerData.wickets * 2 ));
+        performance_index = ((p.battingAverage * p.strikeRate) / 100.0f) + (p.wickets * 2.0f);
     }
+
+    if (performance_index < 0)
+    {
+        performance_index = 0;
+    }
+
+    return (int)performance_index;
 }
+
 
 void insertPlayerToMainList( PlayerNode **head , PlayerData playerData)
 {
@@ -507,29 +507,12 @@ void loadInitialPlayers ( TeamData teamsData[])
         }
     }
 
-    for( int teamIndex = 0 ; teamIndex < teamCount ; teamIndex++)
+
+    for (int index = 0; index < teamCount; index++)
     {
-        TeamData *team_index = &teamsData[teamIndex];
-        float sum = 0;
-        int count = 0;
-        PlayerNode *ptr = team_index->playersList;
-
-        while( ptr != NULL )
-        {
-            if( strcmp ( ptr->data.role , "Batsman") ==0 || strcmp ( ptr->data.role , "All-rounder") ==0)
-            {
-                sum += ptr->data.strikeRate;
-                count++;
-            }
-            ptr = ptr->next;
-        }
-
-        if( count > 0)
-        {
-            float average = sum/count;
-            team_index->averageBattingStrikeRate = average ;
-        }
+        recalculateTeamAvgStrikeRate(&teamsData[index]);
     }
+  
 }
 
 void displayPlayerOFTeam( TeamData teamsData[] , int teamID)
@@ -544,7 +527,7 @@ void displayPlayerOFTeam( TeamData teamsData[] , int teamID)
     printf("Players of Team %s: \n" , teamsData[index].teamName);
 
     printf(" ====================================================================================\n");
-    printf("%-5s %-20s %-12s %6s %6s %7s %6s %6s %10s\n",
+    printf("%-6s %-20s %-15s %-12s %7s %6s %7s %6s %7s %10s\n",
             "ID", "Name", "Role", "Runs" , "Avg", "SR", "Wkts", "ER", "PerfIdx"
     );
 
@@ -554,18 +537,20 @@ void displayPlayerOFTeam( TeamData teamsData[] , int teamID)
     printf("Average Batting Strike Rate: %f\n",teamsData[index].averageBattingStrikeRate);
 }
 
-void printNodes( PlayerNode *head)
+void printNodes(PlayerNode *head)
 {
-    PlayerNode* temp = head;
-    while( temp != NULL)
+    PlayerNode *temp = head;
+    while (temp)
     {
-        printf("%-5d %-20s %-12s %6d %6.2f %7.2f %6d %6.2f %10d\n" , 
-                temp->data.playerId , temp->data.name , temp->data.role , temp->data.totalRuns , temp->data.battingAverage,
-                temp->data.strikeRate , temp->data.wickets , temp->data.economyRate , temp->data.performanceIndex
-        );
+        PlayerData p = temp->data;
+        printf("%-6d %-20s %-15s %-12s %7d %6.2f %7.2f %6d %7.2f %10d\n",
+               p.playerId, p.name, p.teamName, p.role,
+               p.totalRuns, p.battingAverage, p.strikeRate,
+               p.wickets, p.economyRate, p.performanceIndex);
         temp = temp->next;
     }
 }
+
 
 void displayTeamsByAvgBattingSR( TeamData teamsData[] )
 {
@@ -683,7 +668,7 @@ void displayTopKPlayers(TeamData teamsData[])
 
     printf("Top %d %s of %s :\n" , topKPlayers , role_name , teamsData[teamID-1].teamName);
     printf(" ====================================================================================\n");
-    printf("%-5s %-20s %-12s %6s  %6s %7s %6s %6s %10s\n",
+    printf("%-6s %-20s %-15s %-12s %7s %6s %7s %6s %7s %10s\n",
             "ID", "Name", "Role", "Runs" , "Avg", "SR", "Wkts", "ER", "PerfIdx"
     );
     printf(" ====================================================================================\n");
@@ -694,7 +679,7 @@ void displayTopKPlayers(TeamData teamsData[])
     {
         PlayerData *player_node = &head->data;
 
-        printf("%-5d %-20s %-12s %6d %6.2f %7.2f %6d %6.2f %10d\n",
+        printf("%-6d %-20s %-15s %-12s %7d %6.2f %7.2f %6d %7.2f %10d\n",
                player_node->playerId, player_node->name, player_node->role, player_node->totalRuns,
                player_node->battingAverage, player_node->strikeRate, player_node->wickets,
                player_node->economyRate, player_node->performanceIndex);
@@ -742,7 +727,7 @@ void displayPlayersAccordingToRole(TeamData teamsData[])
 
     printf("\n%s of all teams:\n", role_name);
     printf(" ====================================================================================\n");
-    printf("%-5s %-20s %-12s %-12s %6s %6s %7s %6s %10s\n",
+    printf("%-6s %-20s %-15s %-12s %7s %6s %7s %6s %7s %10s\n",
            "ID", "Name", "Team", "Role", "Runs", "Avg",
            "SR", "Wkts", "PerfIdx");
     printf(" ====================================================================================\n");
@@ -1029,37 +1014,34 @@ void addNewPlayers(TeamData teamsData[])
         team->totalAllRounders++;
     }
 
-    updateTeamAvgStrikeRate(team);
+    recalculateTeamAvgStrikeRate(team);
 
     printf("\nPlayer added successfully to Team %s!\n", team->teamName);
 }
 
-void updateTeamAvgStrikeRate(TeamData *team)
+void recalculateTeamAvgStrikeRate(TeamData *team)
 {
-    float totalSR = 0.0f; 
-    int totalPlayers = 0;
+    float totalSR = 0.0f;
+    int count = 0;
 
-    PlayerNode *list = team->batsman;
-    while (list != NULL)
+    PlayerNode *cur = team->playersList;
+    while (cur != NULL)
     {
-        totalSR += list->data.strikeRate;
-        totalPlayers++;
-        list = list->next;
+        if (strcmp(cur->data.role, "Batsman") == 0 ||
+            strcmp(cur->data.role, "All-rounder") == 0)
+        {
+            totalSR += cur->data.strikeRate;
+            count++;
+        }
+        cur = cur->next;
     }
 
-    list = team->allRounders;
-    while (list != NULL)
-    {
-        totalSR += list->data.strikeRate;
-        totalPlayers++;
-        list = list->next;
-    }
-
-    if (totalPlayers > 0)
-    {
-        team->averageBattingStrikeRate = (float)totalSR / totalPlayers;
-    }
+    if (count > 0)
+        team->averageBattingStrikeRate = totalSR / count;
+    else
+        team->averageBattingStrikeRate = 0;
 }
+
 
 
 void freeLinkedList(PlayerNode *head)
@@ -1078,6 +1060,11 @@ void freeAllMemory(TeamData teamsData[])
     for (int index = 0; index < teamCount; index++)
     {
         freeLinkedList(teamsData[index].playersList);
+        freeLinkedList(teamsData[index].batsman);
+        freeLinkedList(teamsData[index].bowlers);
+        freeLinkedList(teamsData[index].allRounders);
+
+        teamsData[index].playersList   = NULL;
         teamsData[index].batsman = NULL;
         teamsData[index].bowlers = NULL;
         teamsData[index].allRounders = NULL;
