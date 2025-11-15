@@ -527,7 +527,7 @@ void displayPlayerOFTeam( TeamData teamsData[] , int teamID)
     printf("Players of Team %s: \n" , teamsData[index].teamName);
 
     printf(" ====================================================================================\n");
-    printf("%-6s %-20s %-15s %-12s %7s %6s %7s %6s %7s %10s\n",
+    printf("%-5s %-20s %-12s %6s %6s %7s %6s %6s %10s\n",
             "ID", "Name", "Role", "Runs" , "Avg", "SR", "Wkts", "ER", "PerfIdx"
     );
 
@@ -537,20 +537,18 @@ void displayPlayerOFTeam( TeamData teamsData[] , int teamID)
     printf("Average Batting Strike Rate: %f\n",teamsData[index].averageBattingStrikeRate);
 }
 
-void printNodes(PlayerNode *head)
+void printNodes( PlayerNode *head)
 {
-    PlayerNode *temp = head;
-    while (temp)
+    PlayerNode* temp = head;
+    while( temp != NULL)
     {
-        PlayerData p = temp->data;
-        printf("%-6d %-20s %-15s %-12s %7d %6.2f %7.2f %6d %7.2f %10d\n",
-               p.playerId, p.name, p.teamName, p.role,
-               p.totalRuns, p.battingAverage, p.strikeRate,
-               p.wickets, p.economyRate, p.performanceIndex);
+        printf("%-5d %-20s %-12s %6d %6.2f %7.2f %6d %6.2f %10d\n" , 
+                temp->data.playerId , temp->data.name , temp->data.role , temp->data.totalRuns , temp->data.battingAverage,
+                temp->data.strikeRate , temp->data.wickets , temp->data.economyRate , temp->data.performanceIndex
+        );
         temp = temp->next;
     }
 }
-
 
 void displayTeamsByAvgBattingSR( TeamData teamsData[] )
 {
@@ -668,7 +666,7 @@ void displayTopKPlayers(TeamData teamsData[])
 
     printf("Top %d %s of %s :\n" , topKPlayers , role_name , teamsData[teamID-1].teamName);
     printf(" ====================================================================================\n");
-    printf("%-6s %-20s %-15s %-12s %7s %6s %7s %6s %7s %10s\n",
+    printf("%-5s %-20s %-12s %6s  %6s %7s %6s %6s %10s\n",
             "ID", "Name", "Role", "Runs" , "Avg", "SR", "Wkts", "ER", "PerfIdx"
     );
     printf(" ====================================================================================\n");
@@ -679,7 +677,7 @@ void displayTopKPlayers(TeamData teamsData[])
     {
         PlayerData *player_node = &head->data;
 
-        printf("%-6d %-20s %-15s %-12s %7d %6.2f %7.2f %6d %7.2f %10d\n",
+        printf("%-5d %-20s %-12s %6d %6.2f %7.2f %6d %6.2f %10d\n",
                player_node->playerId, player_node->name, player_node->role, player_node->totalRuns,
                player_node->battingAverage, player_node->strikeRate, player_node->wickets,
                player_node->economyRate, player_node->performanceIndex);
@@ -727,7 +725,7 @@ void displayPlayersAccordingToRole(TeamData teamsData[])
 
     printf("\n%s of all teams:\n", role_name);
     printf(" ====================================================================================\n");
-    printf("%-6s %-20s %-15s %-12s %7s %6s %7s %6s %7s %10s\n",
+    printf("%-5s %-20s %-12s %-12s %6s %6s %7s %6s %10s\n",
            "ID", "Name", "Team", "Role", "Runs", "Avg",
            "SR", "Wkts", "PerfIdx");
     printf(" ====================================================================================\n");
