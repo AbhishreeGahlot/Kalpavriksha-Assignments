@@ -1,20 +1,15 @@
-/*
-    prev = previousNode
-    next = nextNode
-    chainingNext = hashNext
-    front = mostRecentlyUsed
-    rear = leastRecentlyUsed
-*/
 #include<stdio.h>
 #include<stdlib.h>
 #include<stdbool.h>
 #include<string.h>
+#include<ctype.h>
 
 #define VALUE_SIZE 50
 #define MAX_SIZE_HASHMAP 1000
+#define MAX_DATA_SIZE 50
 
 int totalSizeQueue = 0;
-int CACHE_CAPACITY = 0;
+int cacheCapacity = 0;
 
 
 typedef struct Node
@@ -22,7 +17,7 @@ typedef struct Node
     int key ; 
     char data[VALUE_SIZE];
 
-    struct Node* prev;
+    struct Node* previousNode;
     struct Node* next;
 
     struct Node* chainingNext;
@@ -31,36 +26,91 @@ typedef struct Node
 
 Node** hashmap;
 
-Node* front = NULL;
-Node* rear = NULL;
+Node* mostRecentlyUsed = NULL;
+Node* leastRecentlyUsed = NULL;
 
 void createCache(int capacity);
 char* getKey( int key );
 void putKey( int key ,char *data);
 
-void printMenu(void); //work from here 
-// all the validations functions !!
+void menuPrint(void);
+bool isCommandCorrect( char *inputCommand);
 
+void putFunction(int key , char* inputData);
+void getFunction(int key);
+void exitFunction(void);
+bool capacityValid(int inputCapacity); 
+bool inputValidation( char input[] ,  int inputSize);
+bool isEmptyorSpaces(const char input[]) ;
+bool isNumber(const char input[]);
+void clearInputBuffer();
 
 int hashFunction(int key);
-void moveToFront(Node *node);
-void insertAtFront(Node *node);
+void moveToFront(Node *nodeToMove);
+void insertAtFront(Node *nodeToInsert);
 Node* removeFromLRU();
 void removeFromHashmap(int key);
 
 int main()
 {
+    
+    char capacityInput[50];
     int capacity;
-    printf("Input");
-    printf("\nEnter size for cache : ");
-    scanf("%d" , &capacity);
-    createCache(capacity);
-    return 0;
+
+    printf("\nEnter cache capacity : ");
+    while (1)
+    {
+        fgets( capacityInput , sizeof(capacityInput) , stdin);
+
+        if (!strchr(capacityInput, '\n'))
+        {
+            clearInputBuffer();   
+        }
+
+        capacityInput[strcspn(capacityInput, "\n")] = '\0';
+
+        if( !inputValidation(capacityInput , sizeof(capacityInput)))
+        {
+            continue;
+        }
+
+        capacity = atoi(capacityInput);
+            
+        if( !capacityValid(capacity))
+        {
+            printf("Invalid capacity! Enter integer between 1 and 1000.\n");
+            continue;
+        }
+
+        createCache(capacity);
+        break;
+    }
+
+
+    menuPrint();
+    char command[200];
+    while(1)
+    {
+        fgets( command , sizeof(command) , stdin);
+
+        if (!strchr(command, '\n')) 
+        {
+            int indexChar;
+            while ((indexChar = getchar()) != '\n' && indexChar!= EOF);
+        }
+
+        command[ strcspn( command , "\n")] = '\0';
+    
+        if( !isCommandCorrect(command))
+        {
+            printf("\nEnter a valid command : \n");
+        }
+    }
 }
 
 void createCache(int capacity)
 {
-    CACHE_CAPACITY = capacity;
+    cacheCapacity = capacity;
     hashmap = malloc( MAX_SIZE_HASHMAP * sizeof( Node* ));
 
     for( int index=0 ; index<MAX_SIZE_HASHMAP ; index++)
@@ -68,9 +118,9 @@ void createCache(int capacity)
         hashmap[index] = NULL;
     }
 
-    front = NULL;
-    rear = NULL;
-    printf("\n Cache created successfully !");
+    mostRecentlyUsed = NULL;
+    leastRecentlyUsed = NULL;
+    printf("Cache created successfully !");
 }
 
 int hashFunction(int key)
@@ -78,45 +128,45 @@ int hashFunction(int key)
     return key % MAX_SIZE_HASHMAP;
 }
 
-void insertAtFront(Node *node)
+void insertAtFront(Node *nodeToInsert)
 {
-    if( front == NULL )
+    if( mostRecentlyUsed == NULL )
     {
-        node->prev = NULL;
-        node->next = NULL;
+        nodeToInsert->previousNode = NULL;
+        nodeToInsert->next = NULL;
         
-        front = node;
-        rear = node;
+        mostRecentlyUsed = nodeToInsert;
+        leastRecentlyUsed = nodeToInsert;
     }
     else
     {
-        node->prev = NULL;
-        node->next = front ; 
+        nodeToInsert->previousNode = NULL;
+        nodeToInsert->next = mostRecentlyUsed ; 
 
-        front->prev = node;
-        front = node;
+        mostRecentlyUsed->previousNode = nodeToInsert;
+        mostRecentlyUsed = nodeToInsert;
     }
 }
 
 Node* removeFromLRU()
 {
-    if( rear == NULL)
+    if( leastRecentlyUsed == NULL)
     {
         printf("\n cache empty !");
         return NULL;
     }
 
-    Node* nodeToDelete = rear; 
+    Node* nodeToDelete = leastRecentlyUsed; 
 
-    if (front == rear)
+    if (mostRecentlyUsed == leastRecentlyUsed)
     {
-        front = rear = NULL;
+        mostRecentlyUsed = leastRecentlyUsed = NULL;
     }
 
     else
     {
-        rear = rear->prev;
-        rear->next = NULL;
+        leastRecentlyUsed = leastRecentlyUsed->previousNode;
+        leastRecentlyUsed->next = NULL;
     }
 
     totalSizeQueue--;
@@ -128,102 +178,94 @@ void removeFromHashmap(int key)
 {
     int index = hashFunction(key);
 
-    Node* curr = hashmap[index];
-    Node* prev = NULL;
+    Node* currentNode = hashmap[index];
+    Node* previousNode = NULL;
 
-    while( curr != NULL )
+    while( currentNode != NULL )
     {
-        if( curr->key == key )
+        if( currentNode->key == key )
         {
-            Node* toDelete = curr;
+            Node* toDelete = currentNode;
 
-            if( prev == NULL )
+            if( previousNode == NULL )
             {
-                hashmap[index] = curr->chainingNext;
+                hashmap[index] = currentNode->chainingNext;
             }
             else
             {
-                prev->chainingNext = curr->chainingNext;
+                previousNode->chainingNext = currentNode->chainingNext;
             }
             return;
         }
 
-        prev = curr;
-        curr = curr->chainingNext;
+        previousNode = currentNode;
+        currentNode = currentNode->chainingNext;
     }
 }
 
-void moveToFront(Node *node)
+void moveToFront(Node *nodeToMove)
 {
-    if (node == front) 
+    if (nodeToMove == mostRecentlyUsed) 
     {
         return;
     }
 
-    // detach
-    if (node->prev) 
+    if (nodeToMove->previousNode) 
     {
-        node->prev->next = node->next;
+        nodeToMove->previousNode->next = nodeToMove->next;
     }
-    if (node->next) 
+    if (nodeToMove->next) 
     {
-        node->next->prev = node->prev;
+        nodeToMove->next->previousNode = nodeToMove->previousNode;
     }
 
-    // if moving the rear
-    if (node == rear)
+    if (nodeToMove == leastRecentlyUsed)
     {
-        rear = rear->prev;
-        if (rear) 
+        leastRecentlyUsed = leastRecentlyUsed->previousNode;
+        if (leastRecentlyUsed) 
         {
-            rear->next = NULL;
+            leastRecentlyUsed->next = NULL;
         }
     }
 
-    // insert at front
-    node->next = front;
-    node->prev = NULL;
+    nodeToMove->next = mostRecentlyUsed;
+    nodeToMove->previousNode = NULL;
 
-    front->prev = node;
-    front = node;
+    mostRecentlyUsed->previousNode = nodeToMove;
+    mostRecentlyUsed = nodeToMove;
 }
 
 void putKey( int key ,char *data)
 {
-    //0. find indeX
     int indexInMap = hashFunction(key);
 
-    //1. check node already exist if yes or not ->UPDATE(yes) 
-    Node* current = hashmap[indexInMap];
-    while( current != NULL )
+    Node* currentNode = hashmap[indexInMap];
+    while( currentNode != NULL )
     {
-       if (current->key == key)
+       if (currentNode->key == key)
         {
-            strcpy(current->data, data);
-            moveToFront(current);
+            strcpy(currentNode->data, data);
+            moveToFront(currentNode);
             return;
         }
-       current = current->chainingNext;
+       currentNode = currentNode->chainingNext;
     }
 
-    // 2. insertion 
     Node* newNode = malloc ( sizeof(Node ));
     newNode->key = key;
     strcpy(newNode->data , data);
-    newNode->prev = NULL;
+    newNode->previousNode = NULL;
     newNode->next = NULL;
     newNode->chainingNext = NULL;
 
     newNode->chainingNext = hashmap[indexInMap];
     hashmap[indexInMap] = newNode;
 
-    //3. insertion at front
     insertAtFront(newNode);
 
     totalSizeQueue++;
 
-    //4. if size exceeds pop LRU
-    if (totalSizeQueue > CACHE_CAPACITY)
+    if (totalSizeQueue > cacheCapacity)
     {
         Node* nodeToDelete = removeFromLRU();
         if (nodeToDelete != NULL)
@@ -239,23 +281,234 @@ char* getKey( int key )
 {
     int index = hashFunction(key);
 
-    Node *current = hashmap[index];
+    Node *currentNode = hashmap[index];
 
-    if( current == NULL)
+    if( currentNode == NULL)
     {
         return "NULL";
     }
 
-    while( current != NULL )
+    while( currentNode != NULL )
     {
-        if( current->key == key )
+        if( currentNode->key == key )
         {
-            moveToFront(current);
-            return current->data;
+            moveToFront(currentNode);
+            return currentNode->data;
         }
     
-        current = current->chainingNext;
+        currentNode = currentNode->chainingNext;
     }
     
     return "NULL";
+}
+
+void menuPrint(void)
+{
+    printf("\n__________________________________________________");
+    printf("\nCommands allowed: ");
+    printf("\nput <key> <data>");
+    printf("\nget <key>");
+    printf("\nexit");
+    printf("\n__________________________________________________\n");
+}
+
+bool isCommandCorrect( char *inputCommand)
+{
+    char command[50];
+    char argument[100];
+    command[0]='\0';
+    argument[0]='\0'; 
+
+    while (isspace(*inputCommand)) 
+    {   
+        inputCommand++;
+    }
+
+    int count = sscanf(inputCommand, "%49s %99[^\n]" , command , argument);
+
+    if (count <= 0) 
+    {
+        return false;
+    }
+
+    if (strcmp(command, "put") == 0)
+    {
+        int key;
+        char value[MAX_DATA_SIZE];
+        char extra;
+
+        int count = sscanf(argument, "%d %49s %c", &key, value, &extra);
+
+        if (count == 2)
+        {
+            if (key < 0)
+            {
+                printf("Key must be non-negative.\n");
+                return true;
+            }
+            putFunction(key, value);
+            return true;
+        }
+        else if (count == 1)
+        {
+            printf("Missing value.\nUsage: put <key> <value>\n");
+        }
+        else if (count == 3)
+        {
+            printf("Value cannot contain spaces.\n");
+        }
+        return true;
+    }
+
+    else if (strcmp(command, "get") == 0)
+    {
+        int key;
+        char extra;
+
+        int count = sscanf(argument, "%d %c", &key, &extra);
+
+        if (count == 1)
+        {
+            getFunction(key);
+            return true;
+        }
+        else if (count == 0)
+        {
+            printf("Missing key.\nUsage: get <key>\n");
+        }
+        else
+        {
+            printf("Invalid arguments.\nUsage: get <key>\n");
+        }
+        return true;
+    }
+
+    else if (strcmp(command, "exit") == 0) 
+    {
+        if (argument[0] == '\0')
+        {
+            exitFunction();
+            return true;
+        }
+        return false;
+    }
+
+    return false;
+}
+
+void putFunction(int key , char* inputData)
+{
+    if( key < 0)
+    {
+        printf("Key not valid");
+        return;
+    }
+
+    putKey(key , inputData);
+}
+
+void getFunction( int key)
+{
+    if( key < 0)
+    {
+        printf("Key not valid");
+        return;
+    }
+
+    char* value = getKey(key);
+    printf("%s\n", value);
+}
+
+void exitFunction(void)
+{
+    Node *currentNode = mostRecentlyUsed;
+    while (currentNode != NULL)
+    {
+        Node *nodeToDelete = currentNode;
+        currentNode = currentNode->next;
+        free(nodeToDelete);
+    }
+
+    free(hashmap);
+    hashmap = NULL;
+    mostRecentlyUsed = NULL;
+    leastRecentlyUsed = NULL;
+
+    printf("\nexiting !!\n");
+    exit(0);
+}
+
+bool capacityValid(int inputCapacity)
+{
+    if (inputCapacity >= 1 && inputCapacity <= 1000)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool inputValidation( char input[] ,  int inputSize)
+{
+    if (isEmptyorSpaces(input))
+    {
+        printf("Input cannot be empty!\n");
+        printf("Enter again : ");
+        return false;
+    }
+
+    if (!isNumber(input))
+    {
+        printf("Invalid input! Enter a valid number \n");
+        printf("Enter again : ");
+        return false;
+    }
+
+    return true;
+    
+}
+
+
+bool isNumber(const char input[]) 
+{
+    int index=0 ;   
+    while( input[index] && isspace((unsigned char) input[index]))
+    {
+        index++;
+    }
+    if( input[index] && !isdigit((unsigned char) input[index]))
+    {
+        return false;
+    }
+    while( input[index] && isdigit((unsigned char) input[index]))
+    {
+        index++;
+    }
+    while( input[index] && isspace((unsigned char) input[index]))
+    {
+        index++;
+    }
+    return input[index] == '\0'; 
+}
+
+bool isEmptyorSpaces(const char input[]) 
+{
+    if (input[0] == '\0') 
+    {
+        return true;
+    }
+     for(int index=0 ; input[index] != '\0' ; index++)
+    {
+        if(!isspace(input[index]))
+        {  
+            return false; 
+        }
+    }
+    return true;
+}
+
+void clearInputBuffer()
+{
+    int ch;
+    while ((ch = getchar()) != '\n' && ch != EOF);
 }
