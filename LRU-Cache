@@ -1,0 +1,261 @@
+/*
+    prev = previousNode
+    next = nextNode
+    chainingNext = hashNext
+    front = mostRecentlyUsed
+    rear = leastRecentlyUsed
+*/
+#include<stdio.h>
+#include<stdlib.h>
+#include<stdbool.h>
+#include<string.h>
+
+#define VALUE_SIZE 50
+#define MAX_SIZE_HASHMAP 1000
+
+int totalSizeQueue = 0;
+int CACHE_CAPACITY = 0;
+
+
+typedef struct Node
+{
+    int key ; 
+    char data[VALUE_SIZE];
+
+    struct Node* prev;
+    struct Node* next;
+
+    struct Node* chainingNext;
+}Node;
+
+
+Node** hashmap;
+
+Node* front = NULL;
+Node* rear = NULL;
+
+void createCache(int capacity);
+char* getKey( int key );
+void putKey( int key ,char *data);
+
+void printMenu(void); //work from here 
+// all the validations functions !!
+
+
+int hashFunction(int key);
+void moveToFront(Node *node);
+void insertAtFront(Node *node);
+Node* removeFromLRU();
+void removeFromHashmap(int key);
+
+int main()
+{
+    int capacity;
+    printf("Input");
+    printf("\nEnter size for cache : ");
+    scanf("%d" , &capacity);
+    createCache(capacity);
+    return 0;
+}
+
+void createCache(int capacity)
+{
+    CACHE_CAPACITY = capacity;
+    hashmap = malloc( MAX_SIZE_HASHMAP * sizeof( Node* ));
+
+    for( int index=0 ; index<MAX_SIZE_HASHMAP ; index++)
+    {
+        hashmap[index] = NULL;
+    }
+
+    front = NULL;
+    rear = NULL;
+    printf("\n Cache created successfully !");
+}
+
+int hashFunction(int key)
+{
+    return key % MAX_SIZE_HASHMAP;
+}
+
+void insertAtFront(Node *node)
+{
+    if( front == NULL )
+    {
+        node->prev = NULL;
+        node->next = NULL;
+        
+        front = node;
+        rear = node;
+    }
+    else
+    {
+        node->prev = NULL;
+        node->next = front ; 
+
+        front->prev = node;
+        front = node;
+    }
+}
+
+Node* removeFromLRU()
+{
+    if( rear == NULL)
+    {
+        printf("\n cache empty !");
+        return NULL;
+    }
+
+    Node* nodeToDelete = rear; 
+
+    if (front == rear)
+    {
+        front = rear = NULL;
+    }
+
+    else
+    {
+        rear = rear->prev;
+        rear->next = NULL;
+    }
+
+    totalSizeQueue--;
+
+    return nodeToDelete;
+}
+
+void removeFromHashmap(int key)
+{
+    int index = hashFunction(key);
+
+    Node* curr = hashmap[index];
+    Node* prev = NULL;
+
+    while( curr != NULL )
+    {
+        if( curr->key == key )
+        {
+            Node* toDelete = curr;
+
+            if( prev == NULL )
+            {
+                hashmap[index] = curr->chainingNext;
+            }
+            else
+            {
+                prev->chainingNext = curr->chainingNext;
+            }
+            return;
+        }
+
+        prev = curr;
+        curr = curr->chainingNext;
+    }
+}
+
+void moveToFront(Node *node)
+{
+    if (node == front) 
+    {
+        return;
+    }
+
+    // detach
+    if (node->prev) 
+    {
+        node->prev->next = node->next;
+    }
+    if (node->next) 
+    {
+        node->next->prev = node->prev;
+    }
+
+    // if moving the rear
+    if (node == rear)
+    {
+        rear = rear->prev;
+        if (rear) 
+        {
+            rear->next = NULL;
+        }
+    }
+
+    // insert at front
+    node->next = front;
+    node->prev = NULL;
+
+    front->prev = node;
+    front = node;
+}
+
+void putKey( int key ,char *data)
+{
+    //0. find indeX
+    int indexInMap = hashFunction(key);
+
+    //1. check node already exist if yes or not ->UPDATE(yes) 
+    Node* current = hashmap[indexInMap];
+    while( current != NULL )
+    {
+       if (current->key == key)
+        {
+            strcpy(current->data, data);
+            moveToFront(current);
+            return;
+        }
+       current = current->chainingNext;
+    }
+
+    // 2. insertion 
+    Node* newNode = malloc ( sizeof(Node ));
+    newNode->key = key;
+    strcpy(newNode->data , data);
+    newNode->prev = NULL;
+    newNode->next = NULL;
+    newNode->chainingNext = NULL;
+
+    newNode->chainingNext = hashmap[indexInMap];
+    hashmap[indexInMap] = newNode;
+
+    //3. insertion at front
+    insertAtFront(newNode);
+
+    totalSizeQueue++;
+
+    //4. if size exceeds pop LRU
+    if (totalSizeQueue > CACHE_CAPACITY)
+    {
+        Node* nodeToDelete = removeFromLRU();
+        if (nodeToDelete != NULL)
+        {
+            removeFromHashmap(nodeToDelete->key);
+            free(nodeToDelete);
+            nodeToDelete = NULL;
+        }
+    }
+}
+
+char* getKey( int key )
+{
+    int index = hashFunction(key);
+
+    Node *current = hashmap[index];
+
+    if( current == NULL)
+    {
+        return "NULL";
+    }
+
+    while( current != NULL )
+    {
+        if( current->key == key )
+        {
+            moveToFront(current);
+            return current->data;
+        }
+    
+        current = current->chainingNext;
+    }
+    
+    return "NULL";
+}
