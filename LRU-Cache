@@ -112,6 +112,11 @@ void createCache(int capacity)
 {
     cacheCapacity = capacity;
     hashmap = malloc( MAX_SIZE_HASHMAP * sizeof( Node* ));
+    if( hashmap == NULL)
+    {
+        printf("\n Memory Allocation Failed");
+        return;
+    }
 
     for( int index=0 ; index<MAX_SIZE_HASHMAP ; index++)
     {
@@ -252,6 +257,11 @@ void putKey( int key ,char *data)
     }
 
     Node* newNode = malloc ( sizeof(Node ));
+    if( newNode == NULL)
+    {
+        printf("\n Memory allocation failed");
+        return;
+    }
     newNode->key = key;
     strcpy(newNode->data , data);
     newNode->previousNode = NULL;
