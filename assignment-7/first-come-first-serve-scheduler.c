@@ -88,6 +88,8 @@ PCB *removeFromQueue(Queue *queue, int processId);
 PCB *createPCB(const char *name, int processId, int burst, int io_start, int io_duration);
 
 void cleanString(char *inputString);
+int isValidProcessInput(int pid, int burst, int io_start, int io_duration);
+int isValidKillInput(int pid, int time);
 void inputParsing(char *inputLine);
 
 void decrementIOQueue();
@@ -148,6 +150,57 @@ void cleanString(char *inputString)
     }
 }
 
+int isValidProcessInput(int pid, int burst, int io_start, int io_duration)
+{
+    if (pid <= 0) {
+        printf("Invalid PID: %d\n", pid);
+        return 0;
+    }
+
+    if (burst <= 0) {
+        printf("Invalid CPU burst for PID %d\n", pid);
+        return 0;
+    }
+
+    if (io_start < -1) {
+        printf("Invalid IO start for PID %d\n", pid);
+        return 0;
+    }
+
+    if (io_duration < 0) {
+        printf("Invalid IO duration for PID %d\n", pid);
+        return 0;
+    }
+
+    if (io_start == -1 && io_duration != 0) {
+        printf("IO duration without IO start for PID %d\n", pid);
+        return 0;
+    }
+
+    if (io_start >= burst) {
+        printf("IO start exceeds CPU burst for PID %d\n", pid);
+        return 0;
+    }
+
+    return 1;
+}
+
+int isValidKillInput(int pid, int time)
+{
+    if (pid <= 0) {
+        printf("Invalid KILL PID: %d\n", pid);
+        return 0;
+    }
+
+    if (time < 0) {
+        printf("Invalid KILL time for PID %d\n", pid);
+        return 0;
+    }
+
+    return 1;
+}
+
+
 void inputParsing(char *line) 
 {
     cleanString(line);
@@ -162,10 +215,22 @@ void inputParsing(char *line)
     if (strcasecmp(first, "KILL") == 0) 
     {
         int processId, t;
-        if (sscanf(line + strlen(first), "%d %d", &processId, &t) == 2) 
-        {
-            killList[killCount++] = (KillEvent){processId, t};
+
+        if (sscanf(line + strlen(first), "%d %d", &processId, &t) != 2) {
+            printf("Invalid KILL format\n");
+            return;
         }
+
+        if (!isValidKillInput(processId, t)) {
+            return;
+        }
+
+        if (killCount >= MAX_EVENTS) {
+            printf("Kill list full\n");
+            return;
+        }
+
+        killList[killCount++] = (KillEvent){processId, t};
         return;
     }
 
@@ -174,20 +239,31 @@ void inputParsing(char *line)
     int processId, burst;
 
     int n = sscanf(line, "%63s %d %d %15s %15s",
-                   name, &processId, &burst, io1, io2
-            );
+               name, &processId, &burst, io1, io2);
 
-    if (n < 3) 
-    {
+    if (n < 3) {
+        printf("Invalid process format\n");
         return;
     }
+
+    if (processCount >= MAX_PROCESS) {
+        printf("Maximum process limit reached\n");
+        return;
+    }
+
     if (hashGet(processId)) 
     {
+        printf("Duplicate PID %d ignored\n", processId);
         return;
     }
 
     int io_start = (strcmp(io1, "-") ? atoi(io1) : -1);
-    int io_duration   = (strcmp(io2, "-") ? atoi(io2) : 0);
+    int io_duration = (strcmp(io2, "-") ? atoi(io2) : 0);
+
+    if (!isValidProcessInput(processId, burst, io_start, io_duration)) 
+    {
+        return;
+    }
 
     PCB *process = createPCB(name, processId, burst, io_start, io_duration);
     if (!process) 
@@ -392,6 +468,7 @@ void terminatePCB(PCB *process, int time)
 
 void applyKillEvents(int time, PCB **running, int *terminated) 
 {
+    
     for (int index = 0; index < killCount; index++) 
     {
         if (killList[index].time != time)
