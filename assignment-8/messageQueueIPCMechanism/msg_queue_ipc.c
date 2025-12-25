@@ -3,51 +3,57 @@
 #include <sys/msg.h>
 #include <unistd.h>
 
-#define N 5
+#define ARRAY_SIZE 5
 
-struct msg {
-    long type;
-    int data[N];
+struct Message {
+    long messageType;
+    int numbers[ARRAY_SIZE];
 };
 
-void sort(int a[]) {
-    for (int i = 0; i < N-1; i++)
-        for (int j = 0; j < N-i-1; j++)
-            if (a[j] > a[j+1]) {
-                int t = a[j];
-                a[j] = a[j+1];
-                a[j+1] = t;
+void bubbleSort(int values[]) {
+    for (int pass = 0; pass < ARRAY_SIZE - 1; pass++) {
+        for (int index = 0; index < ARRAY_SIZE - pass - 1; index++) {
+            if (values[index] > values[index + 1]) {
+                int temp = values[index];
+                values[index] = values[index + 1];
+                values[index + 1] = temp;
             }
+        }
+    }
 }
 
 int main() {
-    key_t key = ftok("msg", 65);
-    int msgid = msgget(key, 0666 | IPC_CREAT);
+    key_t messageKey = ftok("msg", 65);
+    int messageQueueId = msgget(messageKey, 0666 | IPC_CREAT);
 
-    struct msg m;
-    m.type = 1;
-    int arr[N] = {6, 2, 9, 1, 4};
+    struct Message messageBuffer;
+    messageBuffer.messageType = 1;
+
+    int originalNumbers[ARRAY_SIZE] = {6, 2, 9, 1, 4};
 
     printf("Before Sorting:\n");
-    for (int i = 0; i < N; i++) {
-        m.data[i] = arr[i];
-        printf("%d ", arr[i]);
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        messageBuffer.numbers[i] = originalNumbers[i];
+        printf("%d ", originalNumbers[i]);
     }
     printf("\n");
 
-    msgsnd(msgid, &m, sizeof(m.data), 0);
+    msgsnd(messageQueueId, &messageBuffer, sizeof(messageBuffer.numbers), 0);
 
     if (fork() == 0) {
-        msgrcv(msgid, &m, sizeof(m.data), 1, 0);
-        sort(m.data);
-        m.type = 2;
-        msgsnd(msgid, &m, sizeof(m.data), 0);
+        msgrcv(messageQueueId, &messageBuffer, sizeof(messageBuffer.numbers), 1, 0);
+        bubbleSort(messageBuffer.numbers);
+        messageBuffer.messageType = 2;
+        msgsnd(messageQueueId, &messageBuffer, sizeof(messageBuffer.numbers), 0);
     } else {
-        msgrcv(msgid, &m, sizeof(m.data), 2, 0);
+        msgrcv(messageQueueId, &messageBuffer, sizeof(messageBuffer.numbers), 2, 0);
         printf("After Sorting:\n");
-        for (int i = 0; i < N; i++)
-            printf("%d ", m.data[i]);
+        for (int i = 0; i < ARRAY_SIZE; i++) {
+            printf("%d ", messageBuffer.numbers[i]);
+        }
         printf("\n");
-        msgctl(msgid, IPC_RMID, NULL);
+        msgctl(messageQueueId, IPC_RMID, NULL);
     }
+
+    return 0;
 }
