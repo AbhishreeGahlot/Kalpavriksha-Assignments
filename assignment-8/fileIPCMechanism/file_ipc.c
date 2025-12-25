@@ -1,57 +1,74 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
-#define FILE_NAME "data.txt"
-#define N 5
+#define DATA_FILE "data.txt"
+#define ARRAY_SIZE 5
 
-void sort(int a[]) {
-    for (int i = 0; i < N-1; i++)
-        for (int j = 0; j < N-i-1; j++)
-            if (a[j] > a[j+1]) {
-                int t = a[j];
-                a[j] = a[j+1];
-                a[j+1] = t;
+void bubbleSort(int numbers[]) {
+    for (int pass = 0; pass < ARRAY_SIZE - 1; pass++) {
+        for (int index = 0; index < ARRAY_SIZE - pass - 1; index++) {
+            if (numbers[index] > numbers[index + 1]) {
+                int temp = numbers[index];
+                numbers[index] = numbers[index + 1];
+                numbers[index + 1] = temp;
             }
+        }
+    }
 }
 
 int main() {
-    int arr[N] = {5, 3, 1, 4, 2};
+    int originalNumbers[ARRAY_SIZE] = {5, 3, 1, 4, 2};
+    FILE *filePointer;
 
     printf("Before Sorting:\n");
-    for (int i = 0; i < N; i++)
-        printf("%d ", arr[i]);
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        printf("%d ", originalNumbers[i]);
+    }
     printf("\n");
 
-    FILE *fp = fopen(FILE_NAME, "w");
-    for (int i = 0; i < N; i++)
-        fprintf(fp, "%d ", arr[i]);
-    fclose(fp);
+    filePointer = fopen(DATA_FILE, "w");
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        fprintf(filePointer, "%d ", originalNumbers[i]);
+    }
+    fclose(filePointer);
 
-    if (fork() == 0) {  // Child
-        int data[N];
-        fp = fopen(FILE_NAME, "r");
-        for (int i = 0; i < N; i++)
-            fscanf(fp, "%d", &data[i]);
-        fclose(fp);
+    if (fork() == 0) {  
+        // Child Process
+        int numbersToSort[ARRAY_SIZE];
 
-        sort(data);
+        filePointer = fopen(DATA_FILE, "r");
+        for (int i = 0; i < ARRAY_SIZE; i++) {
+            fscanf(filePointer, "%d", &numbersToSort[i]);
+        }
+        fclose(filePointer);
 
-        fp = fopen(FILE_NAME, "w");
-        for (int i = 0; i < N; i++)
-            fprintf(fp, "%d ", data[i]);
-        fclose(fp);
+        bubbleSort(numbersToSort);
+
+        filePointer = fopen(DATA_FILE, "w");
+        for (int i = 0; i < ARRAY_SIZE; i++) {
+            fprintf(filePointer, "%d ", numbersToSort[i]);
+        }
+        fclose(filePointer);
+
         exit(0);
-    } else {           // Parent
+    } 
+    else {  
         wait(NULL);
-        fp = fopen(FILE_NAME, "r");
-        for (int i = 0; i < N; i++)
-            fscanf(fp, "%d", &arr[i]);
-        fclose(fp);
+
+        filePointer = fopen(DATA_FILE, "r");
+        for (int i = 0; i < ARRAY_SIZE; i++) {
+            fscanf(filePointer, "%d", &originalNumbers[i]);
+        }
+        fclose(filePointer);
 
         printf("After Sorting:\n");
-        for (int i = 0; i < N; i++)
-            printf("%d ", arr[i]);
+        for (int i = 0; i < ARRAY_SIZE; i++) {
+            printf("%d ", originalNumbers[i]);
+        }
         printf("\n");
     }
+
+    return 0;
 }
