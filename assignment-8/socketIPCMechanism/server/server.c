@@ -4,71 +4,82 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-pthread_mutex_t lock;
+pthread_mutex_t accountMutex;
 
-void* handle_client(void* socket_desc) {
-    int sock = *(int*)socket_desc;
-    int choice, amount;
-    FILE *fp;
+void* handleClientRequest(void* socketPointer) {
+    int clientSocket = *(int*)socketPointer;
+    int userChoice;
+    int transactionAmount;
+    int accountBalance;
 
-    read(sock, &choice, sizeof(choice));
+    FILE *accountFile;
 
-    pthread_mutex_lock(&lock);
-    fp = fopen("../resource/accountDB.txt", "r+");
-    int balance;
-    fscanf(fp, "%d", &balance);
+    read(clientSocket, &userChoice, sizeof(userChoice));
 
-    if (choice == 1) {           // Withdraw
-        read(sock, &amount, sizeof(amount));
-        if (amount <= balance) {
-            balance -= amount;
-            rewind(fp);
-            fprintf(fp, "%d", balance);
-            write(sock, &balance, sizeof(balance));
+    pthread_mutex_lock(&accountMutex);
+
+    accountFile = fopen("../resource/accountDB.txt", "r+");
+    fscanf(accountFile, "%d", &accountBalance);
+
+    if (userChoice == 1) {
+        read(clientSocket, &transactionAmount, sizeof(transactionAmount));
+        if (transactionAmount <= accountBalance) {
+            accountBalance -= transactionAmount;
+            rewind(accountFile);
+            fprintf(accountFile, "%d", accountBalance);
+            write(clientSocket, &accountBalance, sizeof(accountBalance));
         } else {
-            int fail = -1;
-            write(sock, &fail, sizeof(fail));
+            int errorCode = -1;
+            write(clientSocket, &errorCode, sizeof(errorCode));
         }
-    }
-    else if (choice == 2) {      // Deposit
-        read(sock, &amount, sizeof(amount));
-        balance += amount;
-        rewind(fp);
-        fprintf(fp, "%d", balance);
-        write(sock, &balance, sizeof(balance));
-    }
-    else if (choice == 3) {      // Display
-        write(sock, &balance, sizeof(balance));
+    } 
+    else if (userChoice == 2) {
+        read(clientSocket, &transactionAmount, sizeof(transactionAmount));
+        accountBalance += transactionAmount;
+        rewind(accountFile);
+        fprintf(accountFile, "%d", accountBalance);
+        write(clientSocket, &accountBalance, sizeof(accountBalance));
+    } 
+    else if (userChoice == 3) {
+        write(clientSocket, &accountBalance, sizeof(accountBalance));
     }
 
-    fclose(fp);
-    pthread_mutex_unlock(&lock);
-    close(sock);
-    free(socket_desc);
+    fclose(accountFile);
+    pthread_mutex_unlock(&accountMutex);
+
+    close(clientSocket);
+    free(socketPointer);
     return NULL;
 }
 
 int main() {
-    int server_fd, client_sock;
-    struct sockaddr_in server, client;
-    socklen_t c = sizeof(client);
+    int serverSocket;
+    int clientSocket;
 
-    pthread_mutex_init(&lock, NULL);
+    struct sockaddr_in serverAddress;
+    struct sockaddr_in clientAddress;
 
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    server.sin_family = AF_INET;
-    server.sin_port = htons(8080);
-    server.sin_addr.s_addr = INADDR_ANY;
+    socklen_t clientAddressLength = sizeof(clientAddress);
 
-    bind(server_fd, (struct sockaddr*)&server, sizeof(server));
-    listen(server_fd, 5);
+    pthread_mutex_init(&accountMutex, NULL);
+
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(8080);
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+
+    bind(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
+    listen(serverSocket, 5);
 
     printf("ATM Server Running...\n");
 
-    while ((client_sock = accept(server_fd, (struct sockaddr*)&client, &c))) {
-        pthread_t t;
-        int *new_sock = malloc(sizeof(int));
-        *new_sock = client_sock;
-        pthread_create(&t, NULL, handle_client, new_sock);
+    while ((clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddress, &clientAddressLength))) {
+        pthread_t clientThread;
+        int *clientSocketPointer = malloc(sizeof(int));
+        *clientSocketPointer = clientSocket;
+        pthread_create(&clientThread, NULL, handleClientRequest, clientSocketPointer);
     }
+
+    return 0;
 }
