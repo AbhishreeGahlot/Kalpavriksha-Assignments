@@ -1,43 +1,52 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
-#define N 5
+#define ARRAY_SIZE 5
 
-void sort(int a[]) {
-    for (int i = 0; i < N-1; i++)
-        for (int j = 0; j < N-i-1; j++)
-            if (a[j] > a[j+1]) {
-                int t = a[j];
-                a[j] = a[j+1];
-                a[j+1] = t;
+void bubbleSort(int numbers[]) {
+    for (int pass = 0; pass < ARRAY_SIZE - 1; pass++) {
+        for (int index = 0; index < ARRAY_SIZE - pass - 1; index++) {
+            if (numbers[index] > numbers[index + 1]) {
+                int temp = numbers[index];
+                numbers[index] = numbers[index + 1];
+                numbers[index + 1] = temp;
             }
+        }
+    }
 }
 
 int main() {
-    int fd1[2], fd2[2];
-    pipe(fd1);
-    pipe(fd2);
+    int parentToChildPipe[2];
+    int childToParentPipe[2];
 
-    int arr[N] = {9, 7, 5, 3, 1};
+    pipe(parentToChildPipe);
+    pipe(childToParentPipe);
+
+    int originalNumbers[ARRAY_SIZE] = {9, 7, 5, 3, 1};
 
     printf("Before Sorting:\n");
-    for (int i = 0; i < N; i++)
-        printf("%d ", arr[i]);
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        printf("%d ", originalNumbers[i]);
+    }
     printf("\n");
 
     if (fork() == 0) {
-        int data[N];
-        read(fd1[0], data, sizeof(data));
-        sort(data);
-        write(fd2[1], data, sizeof(data));
+        int receivedNumbers[ARRAY_SIZE];
+        read(parentToChildPipe[0], receivedNumbers, sizeof(receivedNumbers));
+        bubbleSort(receivedNumbers);
+        write(childToParentPipe[1], receivedNumbers, sizeof(receivedNumbers));
     } else {
-        write(fd1[1], arr, sizeof(arr));
+        write(parentToChildPipe[1], originalNumbers, sizeof(originalNumbers));
         wait(NULL);
-        read(fd2[0], arr, sizeof(arr));
+        read(childToParentPipe[0], originalNumbers, sizeof(originalNumbers));
 
         printf("After Sorting:\n");
-        for (int i = 0; i < N; i++)
-            printf("%d ", arr[i]);
+        for (int i = 0; i < ARRAY_SIZE; i++) {
+            printf("%d ", originalNumbers[i]);
+        }
         printf("\n");
     }
+
+    return 0;
 }
