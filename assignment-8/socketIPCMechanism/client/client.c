@@ -16,19 +16,26 @@ int main() {
     int transactionAmount;
     int serverResponse;
 
-    printf("1. Withdraw\n2. Deposit\n3. Display Balance\n4. Exit\n");
-    scanf("%d", &userChoice);
+    while (1) {
+        printf("\n1. Withdraw\n2. Deposit\n3. Display Balance\n4. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &userChoice);
 
-    write(clientSocket, &userChoice, sizeof(userChoice));
+        write(clientSocket, &userChoice, sizeof(userChoice));
 
-    if (userChoice == 1 || userChoice == 2) {
-        printf("Enter amount: ");
-        scanf("%d", &transactionAmount);
-        write(clientSocket, &transactionAmount, sizeof(transactionAmount));
-    }
+        if (userChoice == 4) {
+            printf("Exiting...\n");
+            break;
+        }
 
-    if (userChoice != 4) {
+        if (userChoice == 1 || userChoice == 2) {
+            printf("Enter amount: ");
+            scanf("%d", &transactionAmount);
+            write(clientSocket, &transactionAmount, sizeof(transactionAmount));
+        }
+
         read(clientSocket, &serverResponse, sizeof(serverResponse));
+
         if (serverResponse == -1)
             printf("Insufficient Balance\n");
         else
